@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Integralis Lead Engine — Klientenpitch</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --black: #0a0a0a;
+    --dark: #1a1a1a;
+    --gray: #666;
+    --light-gray: #999;
+    --border: #e0e0e0;
+    --bg: #fafafa;
+    --white: #ffffff;
+    --accent: #d4a853;
+    --accent-light: #f5ecd7;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--dark);
+    background: var(--white);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── Slide Layout ─── */
+  .slide {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 80px 120px;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .slide-number {
+    position: absolute;
+    top: 40px;
+    right: 60px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--light-gray);
+    letter-spacing: 2px;
+  }
+
+  .slide-tag {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+
+  /* ─── Title Slide ─── */
+  .slide-title {
+    background: var(--black);
+    color: var(--white);
+    text-align: left;
+  }
+  .slide-title .logo {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 80px;
+  }
+  .slide-title h1 {
+    font-size: 56px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    margin-bottom: 24px;
+    max-width: 700px;
+  }
+  .slide-title .subtitle {
+    font-size: 20px;
+    font-weight: 300;
+    color: #aaa;
+    max-width: 600px;
+    margin-bottom: 60px;
+  }
+  .slide-title .meta {
+    font-size: 13px;
+    color: #666;
+    line-height: 2;
+  }
+  .slide-title .divider {
+    width: 60px;
+    height: 3px;
+    background: var(--accent);
+    margin: 40px 0;
+  }
+
+  /* ─── Content Slides ─── */
+  h2 {
+    font-size: 38px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.5px;
+    margin-bottom: 40px;
+    max-width: 700px;
+  }
+
+  h3 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gray);
+    margin-bottom: 20px;
+  }
+
+  p {
+    font-size: 17px;
+    color: var(--gray);
+    max-width: 640px;
+    margin-bottom: 24px;
+    font-weight: 400;
+  }
+
+  .lead-text {
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--dark);
+    max-width: 680px;
+    line-height: 1.7;
+    margin-bottom: 40px;
+  }
+
+  /* ─── Grid Layouts ─── */
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+    margin-top: 40px;
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 60px;
+    margin-top: 40px;
+  }
+
+  .card {
+    padding: 32px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+  }
+
+  .card-number {
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+
+  .card h4 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .card p {
+    font-size: 14px;
+    color: var(--gray);
+    margin-bottom: 0;
+  }
+
+  /* ─── Stats ─── */
+  .stat-row {
+    display: flex;
+    gap: 80px;
+    margin: 40px 0;
+  }
+
+  .stat {
+    text-align: left;
+  }
+
+  .stat-value {
+    font-size: 52px;
+    font-weight: 700;
+    color: var(--dark);
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .stat-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--light-gray);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* ─── Feature List ─── */
+  .feature-list {
+    list-style: none;
+    padding: 0;
+  }
+
+  .feature-list li {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    font-size: 16px;
+  }
+
+  .feature-list li:last-child { border-bottom: none; }
+
+  .feature-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-light);
+    border-radius: 2px;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .feature-text strong {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .feature-text span {
+    font-size: 14px;
+    color: var(--gray);
+  }
+
+  /* ─── Quote ─── */
+  .quote {
+    font-size: 24px;
+    font-weight: 400;
+    font-style: italic;
+    color: var(--dark);
+    border-left: 3px solid var(--accent);
+    padding-left: 24px;
+    margin: 40px 0;
+    max-width: 600px;
+    line-height: 1.6;
+  }
+
+  /* ─── CTA Slide ─── */
+  .slide-cta {
+    background: var(--black);
+    color: var(--white);
+  }
+  .slide-cta h2 { color: var(--white); }
+  .slide-cta p { color: #aaa; }
+
+  .cta-button {
+    display: inline-block;
+    padding: 16px 40px;
+    background: var(--accent);
+    color: var(--black);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-decoration: none;
+    margin-top: 32px;
+    transition: background 0.2s;
+  }
+  .cta-button:hover { background: #c49a42; }
+
+  /* ─── Workflow ─── */
+  .workflow {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+    margin-top: 40px;
+  }
+
+  .workflow-step {
+    flex: 1;
+    text-align: center;
+    padding: 24px;
+  }
+
+  .workflow-number {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--black);
+    font-size: 20px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+  }
+
+  .workflow-step h4 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .workflow-step p {
+    font-size: 13px;
+    color: var(--gray);
+    margin: 0 auto;
+    max-width: 200px;
+  }
+
+  .workflow-arrow {
+    font-size: 24px;
+    color: var(--border);
+    padding-top: 36px;
+    flex-shrink: 0;
+  }
+
+  /* ─── Print ─── */
+  @media print {
+    .slide { min-height: auto; padding: 40px; page-break-after: always; }
+  }
+
+  @media (max-width: 768px) {
+    .slide { padding: 40px 24px; }
+    .slide-title h1 { font-size: 32px; }
+    h2 { font-size: 28px; }
+    .grid-3, .grid-2 { grid-template-columns: 1fr; }
+    .stat-row { flex-direction: column; gap: 24px; }
+    .workflow { flex-direction: column; }
+    .workflow-arrow { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ SLIDE 1: Title ═══ -->
+<div class="slide slide-title">
+  <div class="logo">Integralis</div>
+  <h1>Lead Engine für Immobilien&shy;entwicklung</h1>
+  <div class="subtitle">Datengetriebene Identifikation von Entwicklungsgrundstücken im Kanton Zug</div>
+  <div class="divider"></div>
+  <div class="meta">
+    Vertraulich — Nur für den internen Gebrauch<br>
+    Präsentiert für: Family Office / Immobilienentwickler<br>
+    Datum: April 2026
+  </div>
+</div>
+
+<!-- ═══ SLIDE 2: Problem ═══ -->
+<div class="slide">
+  <div class="slide-number">02</div>
+  <div class="slide-tag">Ausgangslage</div>
+  <h2>Die Suche nach Entwicklungs&shy;grundstücken ist ineffizient</h2>
+  <p class="lead-text">Immobilienentwickler verbringen Wochen mit der manuellen Suche nach Grundstücken mit Entwicklungspotenzial. Die relevanten Daten sind öffentlich — aber über Dutzende Quellen verstreut.</p>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-number">6+</div>
+      <h4>Datenquellen</h4>
+      <p>GWR, Zonenplan, ÖREB, Kataster, Zefix, Sonnendach — jede Quelle muss einzeln abgefragt werden</p>
+    </div>
+    <div class="card">
+      <div class="card-number">11</div>
+      <h4>Gemeinden</h4>
+      <p>Der Kanton Zug umfasst 11 Gemeinden mit unterschiedlichen Zonenplänen und Bauordnungen</p>
+    </div>
+    <div class="card">
+      <div class="card-number">~3h</div>
+      <h4>Pro Parzelle</h4>
+      <p>Manuelle Recherche pro Grundstück: Kataster, Baujahr, Zonierung, AZ-Berechnung, Eigentümerrecherche</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SLIDE 3: Solution ═══ -->
+<div class="slide">
+  <div class="slide-number">03</div>
+  <div class="slide-tag">Unsere Lösung</div>
+  <h2>Integralis aggregiert alle öffentlichen Daten in Sekunden</h2>
+  <p class="lead-text">Ein Klick auf die Karte — und die Lead Engine liefert sofort alle relevanten Daten aus den offiziellen Schweizer Registern. Kein Login, keine manuelle Suche.</p>
+
+  <ul class="feature-list">
+    <li>
+      <div class="feature-icon">🗺️</div>
+      <div class="feature-text">
+        <strong>Interaktive Swisstopo-Karte</strong>
+        <span>Offizielle Landeskarte mit Parzellengrenzen — Klick auf jedes Grundstück für sofortige Analyse</span>
+      </div>
+    </li>
+    <li>
+      <div class="feature-icon">📊</div>
+      <div class="feature-text">
+        <strong>Ausnützungsziffer-Berechnung</strong>
+        <span>Automatische AZ aus Zonenplandaten — zeigt sofort die ungenutzte Baurechtsreserve</span>
+      </div>
+    </li>
+    <li>
+      <div class="feature-icon">👥</div>
+      <div class="feature-text">
+        <strong>Eigentümer-Typ Analyse</strong>
+        <span>Zefix-Abfrage für Firmen + Heuristik für Privatpersonen und Erbengemeinschaften</span>
+      </div>
+    </li>
+    <li>
+      <div class="feature-icon">☀️</div>
+      <div class="feature-text">
+        <strong>Solarpotenzial (sonnendach.ch)</strong>
+        <span>Dachfläche, Stromertrag, Finanzertrag — relevant für Sanierungsargumente</span>
+      </div>
+    </li>
+    <li>
+      <div class="feature-icon">🔍</div>
+      <div class="feature-text">
+        <strong>Automatischer Gebiet-Scan</strong>
+        <span>Systematisches Scannen ganzer Gemeinden — alle 11 Zuger Gemeinden in einem Durchlauf</span>
+      </div>
+    </li>
+    <li>
+      <div class="feature-icon">📄</div>
+      <div class="feature-text">
+        <strong>PDF-Reports & CSV-Export</strong>
+        <span>Druckfertige Parzellen-Reports für Treuhänder-Termine — alle Daten auf einer Seite</span>
+      </div>
+    </li>
+  </ul>
+</div>
+
+<!-- ═══ SLIDE 4: How it works ═══ -->
+<div class="slide">
+  <div class="slide-number">04</div>
+  <div class="slide-tag">Workflow</div>
+  <h2>Vom Scan zum Abschluss — in vier Schritten</h2>
+  <p>Integralis ist kein Vollautomatisierungs-Tool. Es ist ein Recherche-Instrument, das die manuelle Arbeit um 80% reduziert und den Berater mit konkreten Daten zum Termin schickt.</p>
+
+  <div class="workflow">
+    <div class="workflow-step">
+      <div class="workflow-number">1</div>
+      <h4>Scannen</h4>
+      <p>Gemeinde(n) wählen, Filter setzen, automatisch scannen</p>
+    </div>
+    <div class="workflow-arrow">→</div>
+    <div class="workflow-step">
+      <div class="workflow-number">2</div>
+      <h4>Priorisieren</h4>
+      <p>Leads filtern nach AZ-Reserve, Eigentümertyp, Score</p>
+    </div>
+    <div class="workflow-arrow">→</div>
+    <div class="workflow-step">
+      <div class="workflow-number">3</div>
+      <h4>Vorbereiten</h4>
+      <p>PDF-Report generieren, Grundbuchauszug bestellen</p>
+    </div>
+    <div class="workflow-arrow">→</div>
+    <div class="workflow-step">
+      <div class="workflow-number">4</div>
+      <h4>Beraten</h4>
+      <p>Mit Treuhänder/Notar die Top-Parzellen besprechen</p>
+    </div>
+  </div>
+
+  <div class="quote">
+    «Kein Tool ersetzt das Netzwerk. Aber du gehst mit einer konkreten Parzellenliste zum Treuhänder — nicht mit einer vagen Suchanfrage.»
+  </div>
+</div>
+
+<!-- ═══ SLIDE 5: Lead Scoring ═══ -->
+<div class="slide">
+  <div class="slide-number">05</div>
+  <div class="slide-tag">Lead Scoring</div>
+  <h2>Automatische Priorisierung nach Entwicklungspotenzial</h2>
+  <p>Jedes Grundstück erhält einen Score von 0–100 basierend auf fünf Faktoren. Die interessantesten Leads stehen oben.</p>
+
+  <div class="grid-2">
+    <div>
+      <h3>Scoring-Faktoren</h3>
+      <ul class="feature-list">
+        <li>
+          <div class="feature-icon">📐</div>
+          <div class="feature-text">
+            <strong>AZ-Reserve (bis +25 Pkt.)</strong>
+            <span>Grösste Gewichtung — ungenutzte Baurechtsreserve ist der Hauptindikator</span>
+          </div>
+        </li>
+        <li>
+          <div class="feature-icon">🏠</div>
+          <div class="feature-text">
+            <strong>Baujahr (bis +30 Pkt.)</strong>
+            <span>Ältere Gebäude (vor 1960) haben höheres Entwicklungs- und Sanierungspotenzial</span>
+          </div>
+        </li>
+        <li>
+          <div class="feature-icon">👥</div>
+          <div class="feature-text">
+            <strong>Eigentümer-Typ (bis +15 Pkt.)</strong>
+            <span>Erbengemeinschaften und ältere Privatpersonen = höhere Verkaufsbereitschaft</span>
+          </div>
+        </li>
+        <li>
+          <div class="feature-icon">📏</div>
+          <div class="feature-text">
+            <strong>Gebäudefläche (bis +20 Pkt.)</strong>
+            <span>Grössere Grundstücke bieten mehr Entwicklungsspielraum</span>
+          </div>
+        </li>
+        <li>
+          <div class="feature-icon">🏗️</div>
+          <div class="feature-text">
+            <strong>Gebäudetyp (bis +10 Pkt.)</strong>
+            <span>Niedrige Geschosszahl und EFH auf grossen Parzellen</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+    <div>
+      <h3>Lead-Management</h3>
+      <ul class="feature-list">
+        <li>
+          <div class="feature-icon">🔵</div>
+          <div class="feature-text">
+            <strong>Status-Workflow</strong>
+            <span>Neu → Kontaktiert → Besichtigung → Angebot → Erledigt</span>
+          </div>
+        </li>
+        <li>
+          <div class="feature-icon">🗺️</div>
+          <div class="feature-text">
+            <strong>Karten-Markierung</strong>
+            <span>Alle gespeicherten Leads farbig auf der Karte — keine Doppelbearbeitung</span>
+          </div>
+        </li>
+        <li>
+          <div class="feature-icon">🔽</div>
+          <div class="feature-text">
+            <strong>Erweiterte Filter</strong>
+            <span>Nach Score, AZ-Reserve, Eigentümertyp, Status und Baujahr filtern</span>
+          </div>
+        </li>
+        <li>
+          <div class="feature-icon">📊</div>
+          <div class="feature-text">
+            <strong>CSV-Export</strong>
+            <span>Komplette Lead-Liste mit allen Datenpunkten für Excel</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SLIDE 6: Data Sources ═══ -->
+<div class="slide">
+  <div class="slide-number">06</div>
+  <div class="slide-tag">Datenquellen</div>
+  <h2>Alle Daten aus offiziellen Schweizer Registern</h2>
+  <p>Integralis nutzt ausschliesslich öffentlich zugängliche Daten. Keine Scraper, keine Graubereiche. Jede Information ist verifizierbar und aktuell.</p>
+
+  <div class="stat-row">
+    <div class="stat">
+      <div class="stat-value">100%</div>
+      <div class="stat-label">Öffentliche Daten</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">6</div>
+      <div class="stat-label">Integrierte APIs</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">&lt;3s</div>
+      <div class="stat-label">Pro Abfrage</div>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <h4>geo.admin.ch</h4>
+      <p>Swisstopo Landeskarte, Katasterplan, amtliche Vermessung, Parzellengrenzen</p>
+    </div>
+    <div class="card">
+      <h4>GWR (RegBL)</h4>
+      <p>Gebäude- & Wohnungsregister — Baujahr, Fläche, Geschosse, Heizung, Energieträger</p>
+    </div>
+    <div class="card">
+      <h4>geodienste.ch</h4>
+      <p>Zonenpläne der Kantone — Zonentyp, Hauptnutzung, Bauordnung</p>
+    </div>
+    <div class="card">
+      <h4>Zefix (ld.admin.ch)</h4>
+      <p>Handelsregister — Firmen an der Adresse, Rechtsform, UID, Immobilienfirmen</p>
+    </div>
+    <div class="card">
+      <h4>sonnendach.ch</h4>
+      <p>Solarpotenzial — Dachfläche, Eignung, Stromertrag, Finanzertrag pro Gebäude</p>
+    </div>
+    <div class="card">
+      <h4>ÖREB-Kataster</h4>
+      <p>Öffentlich-rechtliche Eigentumsbeschränkungen — Baulinien, Denkmalschutz, Gewässerschutz</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SLIDE 7: Market Context ═══ -->
+<div class="slide">
+  <div class="slide-number">07</div>
+  <div class="slide-tag">Marktkontext</div>
+  <h2>Positionierung im Schweizer Immobilienmarkt</h2>
+
+  <div class="grid-2">
+    <div>
+      <h3>Was existiert</h3>
+      <ul class="feature-list">
+        <li>
+          <div class="feature-text">
+            <strong>IAZI / Wüest Partner</strong>
+            <span>Bewertung & Marktdaten. 5-stellige Lizenzen. Kein Lead-Scoring.</span>
+          </div>
+        </li>
+        <li>
+          <div class="feature-text">
+            <strong>ImmoScout24 / Homegate</strong>
+            <span>Nur inserierte Objekte. Keine versteckten Perlen.</span>
+          </div>
+        </li>
+        <li>
+          <div class="feature-text">
+            <strong>zugmap.ch / Kataster</strong>
+            <span>Rohdaten ohne Analyse. Kein Scoring, kein Workflow.</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+    <div>
+      <h3>Was Integralis anders macht</h3>
+      <ul class="feature-list">
+        <li>
+          <div class="feature-text">
+            <strong>Daten-Aggregation</strong>
+            <span>6 Quellen in einer Oberfläche. Keine manuelle Recherche.</span>
+          </div>
+        </li>
+        <li>
+          <div class="feature-text">
+            <strong>Proaktive Lead-Identifikation</strong>
+            <span>Scan ganzer Gemeinden statt reaktive Inserat-Suche.</span>
+          </div>
+        </li>
+        <li>
+          <div class="feature-text">
+            <strong>Berater-Workflow</strong>
+            <span>Status-Management, PDF-Reports, Grundbuch-Links — für den Termin bereit.</span>
+          </div>
+        </li>
+      </ul>
+
+      <div class="quote" style="margin-top:40px">
+        «Die spannendsten Objekte werden nie inseriert. Integralis findet sie, bevor sie auf den Markt kommen.»
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SLIDE 8: Legal Awareness ═══ -->
+<div class="slide">
+  <div class="slide-number">08</div>
+  <div class="slide-tag">Rechtlicher Rahmen</div>
+  <h2>Transparenter Umgang mit Datengrenzen</h2>
+  <p class="lead-text">Wir kennen die rechtlichen Grenzen des Schweizer Immobilienmarkts — und haben das Tool bewusst darauf ausgerichtet.</p>
+
+  <div class="grid-2">
+    <div>
+      <h3>Was das Tool leistet</h3>
+      <ul class="feature-list">
+        <li><div class="feature-text"><strong>Priorisierte Parzellenliste</strong><span>Automatisch gescannt und nach Potenzial bewertet</span></div></li>
+        <li><div class="feature-text"><strong>Daten-Aggregation</strong><span>Alle öffentlichen Informationen auf einen Blick</span></div></li>
+        <li><div class="feature-text"><strong>Druckfertige Reports</strong><span>Für den Termin beim Treuhänder oder Notar</span></div></li>
+        <li><div class="feature-text"><strong>Effizienter Workflow</strong><span>Lead-Status, Filter, Export — systematische Bearbeitung</span></div></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Was bewusst manuell bleibt</h3>
+      <ul class="feature-list">
+        <li><div class="feature-text"><strong>Eigentümeridentifikation</strong><span>Grundbuch nur pro Objekt, mit Begründung, gegen Gebühr — das ist kein Bug, sondern Schweizer Recht</span></div></li>
+        <li><div class="feature-text"><strong>Kontaktaufnahme</strong><span>Persönliche Beziehung über Treuhänder/Notar-Netzwerk</span></div></li>
+        <li><div class="feature-text"><strong>Verhandlung & Abschluss</strong><span>Beratungsdienstleistung — der eigentliche Mehrwert des Beraters</span></div></li>
+      </ul>
+      <p style="margin-top:24px;font-size:14px;color:var(--gray)">
+        → Integralis positioniert sich bewusst als <strong>Vorbereitungs-Instrument</strong>, nicht als Vollautomatisierung. Die Eigentümerrecherche bleibt Teil der Beratungsdienstleistung.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SLIDE 9: CTA ═══ -->
+<div class="slide slide-cta">
+  <div class="slide-number" style="color:#666">09</div>
+  <div class="slide-tag">Nächste Schritte</div>
+  <h2>Live-Demo buchen</h2>
+  <p style="font-size:18px;max-width:600px">
+    Integralis ist einsatzbereit. Scannen Sie den Kanton Zug in Minuten — nicht in Wochen. Alle 11 Gemeinden, alle öffentlichen Daten, sofort priorisiert.
+  </p>
+
+  <a class="cta-button" href="https://immobilien-radar-aula-ofsalkah.devinapps.com" target="_blank">
+    Live-Demo öffnen →
+  </a>
+
+  <div style="margin-top:60px;padding-top:24px;border-top:1px solid #333;font-size:13px;color:#666;line-height:2">
+    <strong style="color:var(--accent)">Integralis Lead Engine</strong><br>
+    Entwickelt für Immobilienentwickler & Family Offices in der Zentralschweiz<br>
+    Alle Daten aus offiziellen Schweizer Registern — 100% öffentlich zugänglich
+  </div>
+</div>
+
+</body>
+</html>
