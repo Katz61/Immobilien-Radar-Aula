@@ -749,6 +749,135 @@ const GEMEINDEN = {
   'Walchwil':    { lat: 47.1016, lon: 8.5216, bbox: [8.49, 47.08, 8.56, 47.12] },
 };
 
+// ─── Ausnützungsziffer (AZ) Lookup ────────────────────────
+// Max. AZ values per zone type from Bauordnungen Kanton Zug
+// Source: Bauordnung Stadt Zug 2009, Bauordnung Baar, Cham, etc.
+const AZ_LOOKUP = {
+  // Stadt Zug (Bauordnung 7. April 2009, § 36)
+  'Wohnzone 1':     { az: 0.25, geschosse: 1 },
+  'Wohnzone 2':     { az: 0.50, geschosse: 2 },  // W2A=0.40, W2B/C=0.50
+  'Wohnzone 2A':    { az: 0.40, geschosse: 2 },
+  'Wohnzone 2B':    { az: 0.50, geschosse: 2 },
+  'Wohnzone 2C':    { az: 0.50, geschosse: 2 },
+  'Wohnzone 3':     { az: 0.65, geschosse: 3 },
+  'Wohnzone 4':     { az: 0.75, geschosse: 4 },
+  'Wohn- und Arbeitszone 2': { az: 0.60, geschosse: 2 },
+  'Wohn- und Arbeitszone 3': { az: 0.80, geschosse: 3 },
+  'Wohn- und Arbeitszone 4': { az: 1.00, geschosse: 4 },
+  'Wohn- und Arbeitszone 5': { az: 1.50, geschosse: 5 },
+  'Wohn- und Arbeitszone A': { az: 4.00, geschosse: null },
+  'Wohn- und Arbeitszone B': { az: 5.00, geschosse: null },
+  'Kernzone A':     { az: 1.00, geschosse: null }, // Altstadtreglement
+  'Kernzone B':     { az: 1.10, geschosse: 4 },
+  'Kernzone C':     { az: 2.10, geschosse: 5 },
+  'Kernzone D':     { az: 0.70, geschosse: 3 },
+  'Arbeitszone A':  { az: 8.00, geschosse: null },
+  // Cham (Bauordnung)
+  'Wohn-/Arbeitszone WA3': { az: 0.70, geschosse: 3 },
+  'Wohn-/Arbeitszone WA4': { az: 1.00, geschosse: 4 },
+  // Generic fallbacks based on geodienste.ch typ_kantonal codes
+  'Wohnzone':       { az: 0.50, geschosse: 2 },
+  'Mischzone':      { az: 0.80, geschosse: 3 },
+  'Kernzone':       { az: 1.10, geschosse: 4 },
+  'Arbeitszone':    { az: 1.50, geschosse: null },
+};
+
+// Map geodienste.ch kantonal codes to AZ lookup keys
+const ZONE_CODE_MAP = {
+  1101: 'Wohnzone 1',
+  1102: 'Wohnzone 2',
+  1103: 'Wohnzone 3',
+  1104: 'Wohnzone 4',
+  1201: 'Arbeitszone A',
+  1202: 'Arbeitszone A',
+  1203: 'Arbeitszone A',
+  1204: 'Arbeitszone A',
+  1301: 'Wohn- und Arbeitszone 2',
+  1302: 'Wohn- und Arbeitszone 2',
+  1303: 'Wohn- und Arbeitszone 3',
+  1304: 'Wohn- und Arbeitszone 4',
+  1305: 'Wohn- und Arbeitszone 5',
+  1401: 'Kernzone A',
+  1402: 'Kernzone B',
+  1403: 'Kernzone C',
+  1404: 'Kernzone D',
+  1501: null, // Öffentliches Interesse
+  1601: null, // BsV
+};
+
+// Query geodienste.ch for zone at a WGS84 coordinate
+async function fetchZoneInfo(lat, lon) {
+  try {
+    const d = 0.0003; // ~30m bbox
+    const bbox = `${lon-d},${lat-d},${lon+d},${lat+d}`;
+    const url = `https://geodienste.ch/db/npl_nutzungsplanung_v1_2_0/deu/ogcapi/collections/grundnutzung/items?f=json&limit=3&bbox=${bbox}`;
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (!data.features || data.features.length === 0) return null;
+
+    // Find the most relevant zone (prefer Wohn/Kern zones over Verkehr/Wald)
+    const validFeatures = data.features.filter(f => {
+      const code = f.properties?.hauptnutzung_code;
+      return code && code >= 11 && code <= 16; // Bauzonen only
+    });
+    const feat = validFeatures.length > 0 ? validFeatures[0] : data.features[0];
+    const p = feat.properties;
+
+    return {
+      zonentyp: p.typ_kantonal_bezeichnung || p.hauptnutzung_bezeichnung || '—',
+      zonencode: p.typ_kantonal_code,
+      kommunal: p.typ_kommunal_bezeichnung || '',
+      hauptnutzung: p.hauptnutzung_bezeichnung || '',
+      kanton: p.kanton,
+    };
+  } catch (e) {
+    console.warn('Zone lookup failed:', e);
+    return null;
+  }
+}
+
+// Get max AZ for a zone type
+function getMaxAZ(zoneInfo) {
+  if (!zoneInfo) return null;
+
+  // Try exact kantonal code match
+  if (zoneInfo.zonencode && ZONE_CODE_MAP[zoneInfo.zonencode] !== undefined) {
+    const key = ZONE_CODE_MAP[zoneInfo.zonencode];
+    if (key && AZ_LOOKUP[key]) return { ...AZ_LOOKUP[key], zone: key };
+    if (key === null) return null; // Zone without AZ (öff. Interesse etc.)
+  }
+
+  // Try exact name match
+  const name = zoneInfo.zonentyp;
+  if (AZ_LOOKUP[name]) return { ...AZ_LOOKUP[name], zone: name };
+
+  // Try partial name match
+  for (const [key, val] of Object.entries(AZ_LOOKUP)) {
+    if (name.includes(key) || key.includes(name)) return { ...val, zone: key };
+  }
+
+  // Fallback by hauptnutzung
+  const haupt = zoneInfo.hauptnutzung?.toLowerCase() || '';
+  if (haupt.includes('wohnzone')) return { ...AZ_LOOKUP['Wohnzone'], zone: 'Wohnzone (geschätzt)' };
+  if (haupt.includes('mischzone')) return { ...AZ_LOOKUP['Mischzone'], zone: 'Mischzone (geschätzt)' };
+  if (haupt.includes('kernzone') || haupt.includes('zentrum')) return { ...AZ_LOOKUP['Kernzone'], zone: 'Kernzone (geschätzt)' };
+  if (haupt.includes('arbeit')) return { ...AZ_LOOKUP['Arbeitszone'], zone: 'Arbeitszone (geschätzt)' };
+
+  return null;
+}
+
+// Calculate estimated actual AZ from building data
+// AZ = Geschossfläche / Grundstücksfläche
+// Geschossfläche ≈ Gebäudefläche × Geschosse (simplified)
+function calculateActualAZ(bp, parcelArea) {
+  const garea = bp.garea;  // Gebäudefläche in m²
+  const gastw = bp.gastw;  // Anzahl Geschosse
+  if (!garea || !gastw || !parcelArea || parcelArea <= 0) return null;
+  const geschossflaeche = garea * gastw;
+  return Math.round((geschossflaeche / parcelArea) * 100) / 100;
+}
+
 // ─── Coordinate Conversion WGS84 <-> LV95 ────────────────
 function wgs84ToLV95(lat, lon) {
   const phi = (lat * 3600 - 169028.66) / 10000;
@@ -827,10 +956,11 @@ async function identifyLocation(lat, lon) {
   const ext = `${e-100},${n-100},${e+100},${n+100}`;
 
   try {
-    // Parallel: parcel + building
-    const [parcelRes, buildingRes] = await Promise.all([
+    // Parallel: parcel + building + zone
+    const [parcelRes, buildingRes, zoneInfo] = await Promise.all([
       fetchJSON(`https://api3.geo.admin.ch/rest/services/ech/MapServer/identify?layers=all:ch.kantone.cadastralwebmap-farbe&sr=2056&geometry=${e},${n}&mapExtent=${ext}&imageDisplay=200,200,96&geometryFormat=geojson&geometryType=esriGeometryPoint&limit=1&tolerance=10&returnGeometry=true&lang=de`),
-      fetchJSON(`https://api3.geo.admin.ch/rest/services/ech/MapServer/identify?layers=all:ch.bfs.gebaeude_wohnungs_register&sr=2056&geometry=${e},${n}&mapExtent=${e-200},${n-200},${e+200},${n+200}&imageDisplay=200,200,96&geometryFormat=geojson&geometryType=esriGeometryPoint&limit=10&tolerance=50&returnGeometry=false&lang=de`)
+      fetchJSON(`https://api3.geo.admin.ch/rest/services/ech/MapServer/identify?layers=all:ch.bfs.gebaeude_wohnungs_register&sr=2056&geometry=${e},${n}&mapExtent=${e-200},${n-200},${e+200},${n+200}&imageDisplay=200,200,96&geometryFormat=geojson&geometryType=esriGeometryPoint&limit=10&tolerance=50&returnGeometry=false&lang=de`),
+      fetchZoneInfo(lat, lon)
     ]);
 
     const parcel = parcelRes.results?.[0];
@@ -841,7 +971,7 @@ async function identifyLocation(lat, lon) {
       return;
     }
 
-    currentFeature = { parcel, buildings, lat, lon, e, n };
+    currentFeature = { parcel, buildings, lat, lon, e, n, zoneInfo };
     renderDetails(currentFeature);
 
     // Add marker
@@ -873,7 +1003,7 @@ async function identifyLocation(lat, lon) {
 
 // ─── Render Detail View ──────────────────────────────────
 function renderDetails(feat) {
-  const { parcel, buildings, lat, lon, e, n } = feat;
+  const { parcel, buildings, lat, lon, e, n, zoneInfo } = feat;
   const p = parcel?.properties || {};
   const b0 = buildings[0]?.properties || {};
 
@@ -920,6 +1050,88 @@ function renderDetails(feat) {
         ${detailRow('EGRID', bp.egrid || '—')}
       </div>`;
     });
+  }
+
+  // ─── Ausnützungsziffer (AZ) Section ───
+  const azInfo = getMaxAZ(zoneInfo);
+  if (zoneInfo || azInfo) {
+    html += `<div class="detail-section">
+      <div class="detail-section-title">AUSNÜTZUNGSZIFFER — Zonenplan</div>
+      ${detailRow('Zonentyp', zoneInfo?.zonentyp || '—')}
+      ${zoneInfo?.kommunal ? detailRow('Kommunal', zoneInfo.kommunal) : ''}
+      ${detailRow('Hauptnutzung', zoneInfo?.hauptnutzung || '—')}`;
+
+    if (azInfo) {
+      html += detailRow('Max. AZ (erlaubt)', `<span style="color:var(--accent)">${azInfo.az.toFixed(2)}</span>`);
+      if (azInfo.geschosse) html += detailRow('Max. Geschosse', azInfo.geschosse);
+
+      // Calculate actual AZ for the primary building on this parcel
+      if (buildings.length > 0) {
+        // Only use buildings that match the parcel EGRID (same property)
+        const parcelEgrid = p.egris_egrid;
+        const parcelBuildings = parcelEgrid
+          ? buildings.filter(b => b.properties.egrid === parcelEgrid)
+          : [buildings[0]]; // Fallback to first building
+        const relevantBuildings = parcelBuildings.length > 0 ? parcelBuildings : [buildings[0]];
+
+        const totalGeschossflaeche = relevantBuildings.reduce((sum, bld) => {
+          const bp = bld.properties;
+          return sum + ((bp.garea || 0) * (bp.gastw || 1));
+        }, 0);
+
+        // Estimate parcel area from parcel geometry if available
+        let parcelArea = null;
+        if (parcel?.geometry) {
+          try {
+            // Geometry is in LV95 (Swiss grid, meters) — calculate area directly
+            const coords = parcel.geometry.type === 'MultiPolygon'
+              ? parcel.geometry.coordinates[0][0]
+              : parcel.geometry.type === 'Polygon'
+                ? parcel.geometry.coordinates[0]
+                : null;
+            if (coords && coords.length >= 3) {
+              // Shoelace formula for polygon area (coords already in meters)
+              let area = 0;
+              for (let i = 0; i < coords.length; i++) {
+                const j = (i + 1) % coords.length;
+                area += coords[i][0] * coords[j][1];
+                area -= coords[j][0] * coords[i][1];
+              }
+              parcelArea = Math.round(Math.abs(area) / 2);
+            }
+          } catch(e) {}
+        }
+
+        // Fallback: use building ground area × reasonable lot multiplier
+        if (!parcelArea && b0.garea) {
+          parcelArea = b0.garea * 4; // Typical lot is ~4× building footprint
+          html += detailRow('Grundstücksfläche', `~ ${parcelArea} m² (geschätzt)`);
+        } else if (parcelArea) {
+          html += detailRow('Grundstücksfläche', `~ ${parcelArea} m² (aus Geometrie)`);
+        }
+
+        if (parcelArea && parcelArea > 0) {
+          const actualAZ = Math.round((totalGeschossflaeche / parcelArea) * 100) / 100;
+          const reserve = azInfo.az - actualAZ;
+          const reservePct = Math.round((reserve / azInfo.az) * 100);
+          const reserveColor = reserve > 0.2 ? 'var(--accent)' : reserve > 0 ? 'var(--yellow)' : 'var(--red)';
+
+          html += detailRow('Geschossfläche (geschätzt)', `${totalGeschossflaeche} m²`);
+          html += detailRow('Aktuelle AZ (geschätzt)', `<span style="color:var(--yellow)">${actualAZ.toFixed(2)}</span>`);
+          html += detailRow('AZ-Reserve', `<span style="color:${reserveColor};font-weight:700">${reserve >= 0 ? '+' : ''}${reserve.toFixed(2)} (${reservePct}% ${reserve >= 0 ? 'frei' : 'übernutzt'})</span>`);
+
+          if (reserve > 0.1) {
+            const zusatzGF = Math.round(reserve * parcelArea);
+            html += `<div style="margin:8px 16px;padding:8px 12px;background:rgba(184,240,74,0.08);border:1px solid rgba(184,240,74,0.2);border-radius:2px;font-size:12px;color:var(--accent)">
+              💡 Entwicklungspotenzial: ca. ${zusatzGF} m² zusätzliche Geschossfläche möglich
+            </div>`;
+          }
+        }
+      }
+    } else {
+      html += `<div style="margin:8px 16px;font-size:12px;color:var(--text2)">Keine AZ-Daten für diese Zone verfügbar</div>`;
+    }
+    html += `</div>`;
   }
 
   // ÖREB & Links
@@ -997,9 +1209,55 @@ function decodeEnergy(code) {
 // ─── Save Lead ───────────────────────────────────────────
 function saveAsLead() {
   if (!currentFeature) return;
-  const { parcel, buildings, lat, lon } = currentFeature;
+  const { parcel, buildings, lat, lon, zoneInfo } = currentFeature;
   const p = parcel?.properties || {};
   const b0 = buildings[0]?.properties || {};
+
+  // AZ data
+  const azInfo = getMaxAZ(zoneInfo);
+  let azMax = azInfo?.az || null;
+  let azActual = null;
+  let azReserve = null;
+  let zonentyp = zoneInfo?.zonentyp || '';
+
+  if (azInfo && b0.garea && b0.gastw) {
+    // Estimate parcel area from geometry or fallback
+    let parcelArea = null;
+    if (parcel?.geometry) {
+      try {
+        // Geometry is in LV95 (Swiss grid, meters) — calculate area directly
+        const coords = parcel.geometry.type === 'MultiPolygon'
+          ? parcel.geometry.coordinates[0][0]
+          : parcel.geometry.type === 'Polygon'
+            ? parcel.geometry.coordinates[0]
+            : null;
+        if (coords && coords.length >= 3) {
+          let area = 0;
+          for (let i = 0; i < coords.length; i++) {
+            const j = (i + 1) % coords.length;
+            area += coords[i][0] * coords[j][1];
+            area -= coords[j][0] * coords[i][1];
+          }
+          parcelArea = Math.round(Math.abs(area) / 2);
+        }
+      } catch(e) {}
+    }
+    if (!parcelArea) parcelArea = b0.garea * 4;
+
+    // Only count buildings on the same parcel
+    const parcelEgrid = p.egris_egrid;
+    const parcelBuildings = parcelEgrid
+      ? buildings.filter(b => b.properties.egrid === parcelEgrid)
+      : [buildings[0]];
+    const relevantBuildings = parcelBuildings.length > 0 ? parcelBuildings : [buildings[0]];
+
+    const totalGF = relevantBuildings.reduce((sum, bld) => {
+      const bp = bld.properties;
+      return sum + ((bp.garea || 0) * (bp.gastw || 1));
+    }, 0);
+    azActual = Math.round((totalGF / parcelArea) * 100) / 100;
+    azReserve = Math.round((azInfo.az - azActual) * 100) / 100;
+  }
 
   const lead = {
     id: Date.now(),
@@ -1016,9 +1274,13 @@ function saveAsLead() {
     kategorie: decodeGkat(b0.gkat),
     heizung: decodeHeating(b0.gwaerzh1),
     bezeichnung: b0.gbez || '—',
+    zonentyp: zonentyp,
+    azMax: azMax,
+    azActual: azActual,
+    azReserve: azReserve,
     lat, lon,
     buildings: buildings.length,
-    score: calculateScore(b0),
+    score: calculateScore(b0, azReserve),
     savedAt: new Date().toISOString(),
   };
 
@@ -1034,23 +1296,29 @@ function saveAsLead() {
   showToast('Lead gespeichert: ' + lead.address);
 }
 
-function calculateScore(bp) {
+function calculateScore(bp, azReserve) {
   let score = 0;
   if (bp.gbauj) {
-    if (bp.gbauj < 1960) score += 35;
-    else if (bp.gbauj < 1970) score += 30;
-    else if (bp.gbauj < 1980) score += 25;
-    else if (bp.gbauj < 1990) score += 15;
+    if (bp.gbauj < 1960) score += 30;
+    else if (bp.gbauj < 1970) score += 25;
+    else if (bp.gbauj < 1980) score += 20;
+    else if (bp.gbauj < 1990) score += 10;
     else score += 5;
   }
   if (bp.garea) {
-    if (bp.garea > 500) score += 25;
-    else if (bp.garea > 200) score += 15;
+    if (bp.garea > 500) score += 20;
+    else if (bp.garea > 200) score += 10;
     else score += 5;
   }
-  if (bp.gastw && bp.gastw <= 3) score += 15; // Low-rise = potential
-  if (bp.gkat === 1030) score += 10; // MFH
-  if (bp.gkat === 1020) score += 15; // EFH on large plot
+  if (bp.gastw && bp.gastw <= 3) score += 10; // Low-rise = potential
+  if (bp.gkat === 1030) score += 5; // MFH
+  if (bp.gkat === 1020) score += 10; // EFH on large plot
+  // AZ Reserve bonus (biggest scoring factor!)
+  if (azReserve !== null && azReserve !== undefined) {
+    if (azReserve > 0.5) score += 25;
+    else if (azReserve > 0.2) score += 15;
+    else if (azReserve > 0) score += 5;
+  }
   return Math.min(score, 100);
 }
 
@@ -1075,6 +1343,7 @@ function renderLeads() {
         ${l.baujahr ? `<span>Bj. ${l.baujahr}</span>` : ''}
         ${l.flaeche ? `<span>${l.flaeche} m²</span>` : ''}
         ${l.geschosse ? `<span>${l.geschosse} Gesch.</span>` : ''}
+        ${l.azReserve !== null && l.azReserve !== undefined ? `<span style="color:${l.azReserve > 0.2 ? 'var(--accent)' : l.azReserve > 0 ? 'var(--yellow)' : 'var(--red)'}">AZ-Res. ${l.azReserve >= 0 ? '+' : ''}${l.azReserve}</span>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -1102,11 +1371,13 @@ function updateLeadsBadge() {
 // ─── CSV Export ──────────────────────────────────────────
 function exportCSV() {
   if (!savedLeads.length) return;
-  const headers = ['Score','Adresse','PLZ','Ort','Gemeinde','EGRID','Parzelle','Baujahr','Fläche m²','Geschosse','Wohnungen','Kategorie','Heizung','Bezeichnung','Lat','Lon','Gespeichert'];
+  const headers = ['Score','Adresse','PLZ','Ort','Gemeinde','EGRID','Parzelle','Baujahr','Fläche m²','Geschosse','Wohnungen','Kategorie','Heizung','Bezeichnung','Zonentyp','AZ Max','AZ Aktuell','AZ Reserve','Lat','Lon','Gespeichert'];
   const rows = savedLeads.map(l => [
     l.score, l.address, l.plz, l.ort, l.gemeinde, l.egrid, l.parcelNr,
     l.baujahr || '', l.flaeche || '', l.geschosse || '', l.wohnungen || '',
-    l.kategorie, l.heizung, l.bezeichnung, l.lat, l.lon, l.savedAt
+    l.kategorie, l.heizung, l.bezeichnung,
+    l.zonentyp || '', l.azMax || '', l.azActual || '', l.azReserve ?? '',
+    l.lat, l.lon, l.savedAt
   ]);
   const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(';')).join('\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -1167,9 +1438,15 @@ async function startAreaScan() {
         `Punkt ${done}/${total} — ${found} Treffer gefunden...`;
 
       try {
-        const res = await fetchJSON(
-          `https://api3.geo.admin.ch/rest/services/ech/MapServer/identify?layers=all:ch.bfs.gebaeude_wohnungs_register&sr=2056&geometry=${e},${n}&mapExtent=${e-200},${n-200},${e+200},${n+200}&imageDisplay=200,200,96&geometryFormat=geojson&geometryType=esriGeometryPoint&limit=10&tolerance=50&returnGeometry=false&lang=de`
-        );
+        // Fetch buildings + zone in parallel for this grid point
+        const [res, zoneInfo] = await Promise.all([
+          fetchJSON(
+            `https://api3.geo.admin.ch/rest/services/ech/MapServer/identify?layers=all:ch.bfs.gebaeude_wohnungs_register&sr=2056&geometry=${e},${n}&mapExtent=${e-200},${n-200},${e+200},${n+200}&imageDisplay=200,200,96&geometryFormat=geojson&geometryType=esriGeometryPoint&limit=10&tolerance=50&returnGeometry=false&lang=de`
+          ),
+          fetchZoneInfo(lat, lon)
+        ]);
+
+        const azInfo = getMaxAZ(zoneInfo);
 
         for (const bld of (res.results || [])) {
           const bp = bld.properties;
@@ -1178,6 +1455,16 @@ async function startAreaScan() {
 
           // Deduplicate by EGID
           if (scanLeads.find(l => l.egid === bp.egid)) continue;
+
+          // Calculate AZ for this building
+          let azMax = azInfo?.az || null;
+          let azActual = null;
+          let azReserve = null;
+          if (azInfo && bp.garea && bp.gastw) {
+            const parcelArea = bp.garea * 4; // Estimate
+            azActual = Math.round(((bp.garea * bp.gastw) / parcelArea) * 100) / 100;
+            azReserve = Math.round((azInfo.az - azActual) * 100) / 100;
+          }
 
           const addr = bp.strname_deinr || `${(bp.strname || [''])[0]} ${bp.deinr || ''}`.trim();
           const lead = {
@@ -1196,10 +1483,14 @@ async function startAreaScan() {
             kategorie: decodeGkat(bp.gkat),
             heizung: decodeHeating(bp.gwaerzh1),
             bezeichnung: bp.gbez || '—',
+            zonentyp: zoneInfo?.zonentyp || '',
+            azMax: azMax,
+            azActual: azActual,
+            azReserve: azReserve,
             lat: lat,
             lon: lon,
             buildings: 1,
-            score: calculateScore(bp),
+            score: calculateScore(bp, azReserve),
             savedAt: new Date().toISOString(),
           };
 
@@ -1216,7 +1507,7 @@ async function startAreaScan() {
             iconAnchor: [markerSize/2, markerSize + 6]
           });
           const m = L.marker([lat, lon], { icon: scanIcon }).addTo(map);
-          m.bindPopup(`<b>${addr}</b><br>Bj. ${bp.gbauj} | ${bp.garea || '?'} m² | Score: ${lead.score}`);
+          m.bindPopup(`<b>${addr}</b><br>Bj. ${bp.gbauj} | ${bp.garea || '?'} m² | Score: ${lead.score}${azReserve !== null ? `<br>Zone: ${zoneInfo?.zonentyp || '—'} | AZ-Reserve: ${azReserve >= 0 ? '+' : ''}${azReserve}` : ''}`);
           markers.push(m);
         }
       } catch(e) {
@@ -1257,6 +1548,7 @@ async function startAreaScan() {
           ${l.flaeche ? `<span>${l.flaeche} m²</span>` : ''}
           ${l.geschosse ? `<span>${l.geschosse} Gesch.</span>` : ''}
           ${l.wohnungen ? `<span>${l.wohnungen} Whg.</span>` : ''}
+          ${l.azReserve !== null && l.azReserve !== undefined ? `<span style="color:${l.azReserve > 0.2 ? 'var(--accent)' : l.azReserve > 0 ? 'var(--yellow)' : 'var(--red)'}">AZ-Res. ${l.azReserve >= 0 ? '+' : ''}${l.azReserve}</span>` : ''}
         </div>
       </div>`;
     }).join('');
