@@ -928,29 +928,51 @@ let scanRunning = false;
 let scanAbort = false;
 
 // ─── Renditekalkulator Konstanten (Kanton Zug) ───────────
-const RENDITE_PARAMS = {
-  // Landwerte CHF/m² nach Zonentyp (Richtwerte Kanton Zug 2024)
-  landwert: {
-    'Wohnzone 1': 1200, 'Wohnzone 2': 1400, 'Wohnzone 3': 1600,
-    'Wohnzone 4': 1800, 'Wohnzone 5': 2000,
-    'Kernzone': 2200, 'Mischzone': 1500, 'Zentrumszone': 2500,
-    'Arbeitszone': 800, 'default': 1400
+// Quelle: RealAdvisor.ch (realadvisor.ch/de/immobilienpreise-pro-m2/kanton-zug)
+// Stand: Februar 2026 — Median-Verkaufspreise & Jahresmieten
+const REALADVISOR_PREISE = {
+  // Verkaufspreise CHF/m² pro Gemeinde (Median Wohnungen, Feb 2026)
+  verkauf: {
+    'Zug': 18834, 'Baar': 15504, 'Cham': 14781, 'Risch': 15383,
+    'Steinhausen': 14189, 'Hünenberg': 13827, 'Unterägeri': 14090,
+    'Oberägeri': 16428, 'Menzingen': 12774, 'Walchwil': 18654,
+    'Neuheim': 12902, 'default': 15693
   },
-  // Baukosten CHF/m² Geschossfläche (BKP 2024)
+  // Jahresmiete CHF/m²/Jahr pro Gemeinde (abgeleitet aus Monatsmieten)
+  // Kanton Zug Median: Wohnungen CHF 433/m²/Jahr, Häuser CHF 412/m²/Jahr
+  miete: {
+    'Zug': 480, 'Baar': 420, 'Cham': 400, 'Risch': 410,
+    'Steinhausen': 390, 'Hünenberg': 380, 'Unterägeri': 385,
+    'Oberägeri': 440, 'Menzingen': 350, 'Walchwil': 470,
+    'Neuheim': 355, 'default': 433
+  }
+};
+
+const RENDITE_PARAMS = {
+  // Baulandpreise CHF/m² nach Zonentyp (Richtwerte Kanton Zug 2026)
+  // Abgeleitet aus RealAdvisor-Verkaufspreisen und Baulandstatistik
+  landwert: {
+    'Wohnzone 1': 2000, 'Wohnzone 2': 2500, 'Wohnzone 3': 3000,
+    'Wohnzone 4': 3500, 'Wohnzone 5': 4000,
+    'Kernzone': 4500, 'Mischzone': 2800, 'Zentrumszone': 5000,
+    'Arbeitszone': 1500, 'default': 2500
+  },
+  // Baukosten CHF/m² Geschossfläche (BKP 2024/2025)
   baukosten: {
     neubau: 5500,        // Neubau mittlerer Standard
     sanierung: 2800,     // Gesamtsanierung
     aufstockung: 4200    // Aufstockung/Anbau
   },
-  // Mietpreise CHF/m²/Jahr netto (Referenzmieten Zug 2024)
+  // Mietpreise CHF/m²/Jahr netto nach Zonentyp
+  // Quelle: RealAdvisor Kanton Zug, Median CHF 433/m²/Jahr (Wohnungen)
   miete: {
-    'Wohnzone 1': 220, 'Wohnzone 2': 240, 'Wohnzone 3': 260,
-    'Wohnzone 4': 280, 'Wohnzone 5': 300,
-    'Kernzone': 320, 'Mischzone': 250, 'Zentrumszone': 340,
-    'Arbeitszone': 180, 'default': 240
+    'Wohnzone 1': 320, 'Wohnzone 2': 360, 'Wohnzone 3': 400,
+    'Wohnzone 4': 420, 'Wohnzone 5': 440,
+    'Kernzone': 470, 'Mischzone': 380, 'Zentrumszone': 490,
+    'Arbeitszone': 280, 'default': 400
   },
   betriebskosten_pct: 0.18,  // 18% des Mietertrags
-  verkaufsfaktor: 30,         // Verkaufspreis = Jahresmietertrag × Faktor
+  verkaufsfaktor: 35,         // Verkaufspreis = Jahresmietertrag × Faktor (RealAdvisor: ~36×)
   abbruchkosten_m2: 120       // CHF/m² Abbruchkosten
 };
 
@@ -1442,7 +1464,8 @@ async function identifyLocation(lat, lon) {
       return;
     }
 
-    currentFeature = { parcel, buildings, lat, lon, e, n, zoneInfo, solarData };
+    const gemeinde = buildings.length > 0 ? (buildings[0].properties?.ggdename || '') : '';
+    currentFeature = { parcel, buildings, lat, lon, e, n, zoneInfo, solarData, gemeinde };
     renderDetails(currentFeature);
 
     // Async: fetch company/owner data (non-blocking, updates UI when ready)
@@ -1660,8 +1683,12 @@ function renderDetails(feat) {
   // ─── Renditekalkulator Section ───
   if (azInfo && buildings.length > 0) {
     const zonenKey = zoneInfo?.zonentyp || '';
+    const gemeindeName = feat.gemeinde || '';
     const landwertM2 = RENDITE_PARAMS.landwert[zonenKey] || RENDITE_PARAMS.landwert['default'];
-    const mieteM2 = RENDITE_PARAMS.miete[zonenKey] || RENDITE_PARAMS.miete['default'];
+    // Prefer Gemeinde-specific RealAdvisor data, fallback to zone-based
+    const raVerkauf = REALADVISOR_PREISE.verkauf[gemeindeName] || REALADVISOR_PREISE.verkauf['default'];
+    const raMiete = REALADVISOR_PREISE.miete[gemeindeName] || REALADVISOR_PREISE.miete['default'];
+    const mieteM2 = RENDITE_PARAMS.miete[zonenKey] || raMiete || RENDITE_PARAMS.miete['default'];
     
     let rkParcelArea = null;
     if (parcel?.geometry) {
@@ -1717,6 +1744,7 @@ function renderDetails(feat) {
         <div class="detail-section-title">💰 RENDITEKALKULATOR — 3 Szenarien</div>
         <div style="padding:4px 16px 8px;font-size:10px;color:var(--text2)">
           Basis: Landwert ${fmt(landwertM2)} CHF/m² · Miete ${fmt(mieteM2)} CHF/m²/Jahr · ${zonenKey || 'Standard'}
+          ${gemeindeName ? `<br>📊 RealAdvisor ${gemeindeName}: Verkauf ${fmt(raVerkauf)} CHF/m² · Miete ${fmt(raMiete)} CHF/m²/Jahr` : ''}
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 16px 12px">
           <div style="background:rgba(184,240,74,0.05);border:1px solid rgba(184,240,74,0.15);border-radius:4px;padding:10px">
@@ -1750,7 +1778,7 @@ function renderDetails(feat) {
           </div>
         </div>
         <div style="padding:4px 16px 8px;font-size:9px;color:var(--muted)">
-          ⚠️ Richtwerte — keine Anlageberatung. Baukosten BKP 2024, Mieten Referenzwerte Zug.
+          ⚠️ Richtwerte — keine Anlageberatung. Baukosten BKP 2024/25, Marktdaten <a href="https://realadvisor.ch/de/immobilienpreise-pro-m2/kanton-zug" target="_blank" style="color:var(--accent)">RealAdvisor.ch</a> Feb 2026.
         </div>
       </div>`;
     }
