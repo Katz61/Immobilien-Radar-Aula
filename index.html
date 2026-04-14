@@ -878,6 +878,186 @@ function calculateActualAZ(bp, parcelArea) {
   return Math.round((geschossflaeche / parcelArea) * 100) / 100;
 }
 
+// ─── Eigentümer-Typ Erkennung ──────────────────────────────
+// Query Zefix SPARQL endpoint (ld.admin.ch) for companies registered at an address
+async function fetchCompaniesAtAddress(street, locality) {
+  if (!street || !locality) return [];
+  try {
+    // Extract just the street name (remove house number)
+    const streetName = street.replace(/\s*\d+[a-zA-Z]?\.?\s*$/, '').replace(/\s+/g, ' ').trim();
+    if (!streetName) return [];
+    const query = `
+      PREFIX schema: <http://schema.org/>
+      PREFIX admin: <https://schema.ld.admin.ch/>
+      SELECT ?name ?type ?uid ?street WHERE {
+        ?c a admin:ZefixOrganisation ;
+           schema:name ?name ;
+           schema:identifier ?uid ;
+           schema:additionalType ?tid ;
+           schema:address ?adr .
+        ?tid schema:name ?type .
+        FILTER(lang(?type)="de")
+        ?adr schema:streetAddress ?street ;
+             schema:addressLocality ?loc .
+        FILTER(LCASE(?loc) = "${locality.toLowerCase()}")
+        FILTER(CONTAINS(LCASE(?street), "${streetName.toLowerCase()}"))
+      } LIMIT 10
+    `;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const resp = await fetch('https://ld.admin.ch/query', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/sparql-results+json',
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: 'query=' + encodeURIComponent(query),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    // Deduplicate by company name (SPARQL returns multiple identifiers per company)
+    const seen = new Set();
+    return (data.results?.bindings || []).filter(b => {
+      const name = b.name?.value || '';
+      if (seen.has(name)) return false;
+      seen.add(name);
+      return true;
+    }).map(b => {
+      // Extract clean UID (CHE number)
+      const rawUid = b.uid?.value || '';
+      const cheMatch = rawUid.match(/CHE[\d.]+/);
+      return {
+        name: b.name?.value || '',
+        type: b.type?.value || '',
+        uid: cheMatch ? cheMatch[0] : '',
+        street: b.street?.value || ''
+      };
+    });
+  } catch (e) {
+    console.warn('Zefix lookup failed:', e);
+    return [];
+  }
+}
+
+// Classify owner type based on available data
+function classifyOwnerType(companies, buildingData) {
+  const result = {
+    type: 'Unbekannt',        // Privatperson, Firma, Öffentlich, Unbekannt
+    confidence: 'niedrig',     // hoch, mittel, niedrig
+    companies: companies || [],
+    hints: []
+  };
+
+  // If companies are registered at this address
+  if (companies && companies.length > 0) {
+    // Check if it's a real estate company or holding
+    const immoKeywords = ['immobilien', 'real estate', 'liegenschaft', 'holding', 'invest', 'property', 'verwaltung'];
+    const hasImmoCompany = companies.some(c =>
+      immoKeywords.some(k => c.name.toLowerCase().includes(k))
+    );
+    if (hasImmoCompany) {
+      result.type = 'Immobilienfirma';
+      result.confidence = 'hoch';
+      result.hints.push('Immobilien-/Verwaltungsfirma an Adresse registriert');
+    } else {
+      result.type = 'Firma';
+      result.confidence = 'hoch';
+      result.hints.push(`${companies.length} Firma(en) an Adresse registriert`);
+    }
+  }
+
+  // Heuristic indicators for elderly/heir ownership
+  if (buildingData) {
+    const bp = buildingData;
+    const baujahr = bp.gbauj;
+    const kat = (bp.gkat_text || '').toLowerCase();
+    const klasse = (bp.gklas_text || '').toLowerCase();
+
+    // Einfamilienhaus from before 1970, likely elderly owner
+    if (baujahr && baujahr < 1970 && kat.includes('einfamilienhaus')) {
+      result.hints.push('Einfamilienhaus vor 1970 — mögliche ältere Eigentümer');
+      if (result.type === 'Unbekannt') {
+        result.type = 'Privatperson (Potenzial)';
+        result.confidence = 'mittel';
+      }
+    }
+
+    // Very old building, single owner likely
+    if (baujahr && baujahr < 1950 && !companies?.length) {
+      result.hints.push('Gebäude vor 1950 ohne Firmenregistrierung — wahrscheinlich Privatbesitz');
+      if (result.type === 'Unbekannt' || result.type === 'Privatperson (Potenzial)') {
+        result.type = 'Privatperson (Potenzial)';
+        result.confidence = 'mittel';
+      }
+    }
+
+    // Small MFH from before 1960 — classic Erbengemeinschaft candidate
+    if (baujahr && baujahr < 1960 && (kat.includes('mehrfamilienhaus') || (bp.ganzwhg && bp.ganzwhg >= 2 && bp.ganzwhg <= 6))) {
+      result.hints.push('Kleines MFH vor 1960 — typisch für Erbengemeinschaften');
+      if (result.type === 'Unbekannt' || result.type === 'Privatperson (Potenzial)') {
+        result.type = 'Erbengemeinschaft (Potenzial)';
+        result.confidence = 'niedrig';
+      }
+    }
+  }
+
+  return result;
+}
+
+// Render the owner type section HTML
+function renderOwnerSection(ownerInfo) {
+  if (!ownerInfo) return '';
+  const typeColors = {
+    'Firma': '#ff6b6b',
+    'Immobilienfirma': '#ff6b6b',
+    'Privatperson (Potenzial)': 'var(--accent)',
+    'Erbengemeinschaft (Potenzial)': 'var(--yellow)',
+    'Unbekannt': 'var(--text2)'
+  };
+  const typeIcons = {
+    'Firma': '🏢',
+    'Immobilienfirma': '🏗️',
+    'Privatperson (Potenzial)': '👤',
+    'Erbengemeinschaft (Potenzial)': '👥',
+    'Unbekannt': '❓'
+  };
+  const color = typeColors[ownerInfo.type] || 'var(--text2)';
+  const icon = typeIcons[ownerInfo.type] || '❓';
+  const confLabel = { hoch: 'Hoch', mittel: 'Mittel', niedrig: 'Niedrig' };
+
+  let html = `<div class="detail-section">
+    <div class="detail-section-title">EIGENTÜMER-TYP — Zefix & Heuristik</div>
+    <div class="detail-row"><div class="detail-label">Typ</div><div class="detail-value" style="color:${color};font-weight:700">${icon} ${ownerInfo.type}</div></div>
+    <div class="detail-row"><div class="detail-label">Konfidenz</div><div class="detail-value">${confLabel[ownerInfo.confidence] || ownerInfo.confidence}</div></div>`;
+
+  // Show hints
+  if (ownerInfo.hints.length > 0) {
+    html += `<div style="margin:6px 16px;padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:2px;font-size:11px;color:var(--text2)">`;
+    ownerInfo.hints.forEach(h => { html += `<div style="margin:2px 0">• ${h}</div>`; });
+    html += `</div>`;
+  }
+
+  // Show companies found
+  if (ownerInfo.companies.length > 0) {
+    html += `<div style="margin:6px 16px;font-size:11px"><div style="color:var(--accent);margin-bottom:4px;font-weight:500">Registrierte Firmen an dieser Adresse:</div>`;
+    ownerInfo.companies.forEach(c => {
+      const zefixUrl = c.uid ? `https://www.zefix.admin.ch/de/search/entity/list/firm/${encodeURIComponent(c.name)}` : '#';
+      html += `<div style="margin:3px 0;padding:4px 8px;background:rgba(255,255,255,0.03);border-radius:2px">
+        <div style="color:var(--text)">${c.name}</div>
+        <div style="color:var(--text2);font-size:10px">${c.type}${c.uid ? ` — UID: ${c.uid}` : ''}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  } else {
+    html += `<div style="margin:6px 16px;font-size:11px;color:var(--text2)">Keine Firmen an dieser Adresse im Handelsregister gefunden</div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
 // ─── Coordinate Conversion WGS84 <-> LV95 ────────────────
 function wgs84ToLV95(lat, lon) {
   const phi = (lat * 3600 - 169028.66) / 10000;
@@ -973,6 +1153,24 @@ async function identifyLocation(lat, lon) {
 
     currentFeature = { parcel, buildings, lat, lon, e, n, zoneInfo };
     renderDetails(currentFeature);
+
+    // Async: fetch company/owner data (non-blocking, updates UI when ready)
+    if (buildings.length > 0) {
+      const b0 = buildings[0].properties;
+      const addr = b0.strname_deinr || '';
+      const ort = b0.ggdename || '';
+      const doOwnerLookup = async () => {
+        let companies = [];
+        if (addr && ort) {
+          try { companies = await fetchCompaniesAtAddress(addr, ort); } catch(e) { console.warn('Zefix error:', e); }
+        }
+        const ownerInfo = classifyOwnerType(companies, b0);
+        currentFeature.ownerInfo = ownerInfo;
+        const ownerEl = document.getElementById('owner-info-section');
+        if (ownerEl) ownerEl.innerHTML = renderOwnerSection(ownerInfo);
+      };
+      doOwnerLookup();
+    }
 
     // Add marker
     clearMarkers();
@@ -1134,6 +1332,17 @@ function renderDetails(feat) {
     html += `</div>`;
   }
 
+  // Owner type section (placeholder, filled async by Zefix lookup)
+  html += `<div id="owner-info-section">
+    <div class="detail-section">
+      <div class="detail-section-title">EIGENTÜMER-TYP — Zefix & Heuristik</div>
+      <div style="padding:8px 16px;font-size:12px;color:var(--text2)">
+        <span class="loading-spinner" style="display:inline-block;width:12px;height:12px;border:2px solid var(--text2);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin-right:6px;vertical-align:middle"></span>
+        Eigentümer-Daten werden geladen...
+      </div>
+    </div>
+  </div>`;
+
   // ÖREB & Links
   const egrid = p.egris_egrid || b0.egrid || '';
   if (egrid) {
@@ -1278,9 +1487,12 @@ function saveAsLead() {
     azMax: azMax,
     azActual: azActual,
     azReserve: azReserve,
+    ownerType: currentFeature.ownerInfo?.type || '',
+    ownerHints: (currentFeature.ownerInfo?.hints || []).join('; '),
+    companies: (currentFeature.ownerInfo?.companies || []).map(c => c.name).join(', '),
     lat, lon,
     buildings: buildings.length,
-    score: calculateScore(b0, azReserve),
+    score: calculateScore(b0, azReserve, currentFeature.ownerInfo?.type),
     savedAt: new Date().toISOString(),
   };
 
@@ -1296,7 +1508,7 @@ function saveAsLead() {
   showToast('Lead gespeichert: ' + lead.address);
 }
 
-function calculateScore(bp, azReserve) {
+function calculateScore(bp, azReserve, ownerType) {
   let score = 0;
   if (bp.gbauj) {
     if (bp.gbauj < 1960) score += 30;
@@ -1319,7 +1531,14 @@ function calculateScore(bp, azReserve) {
     else if (azReserve > 0.2) score += 15;
     else if (azReserve > 0) score += 5;
   }
-  return Math.min(score, 100);
+  // Owner type bonus — Erbengemeinschaft/Privatperson = higher acquisition potential
+  if (ownerType) {
+    if (ownerType === 'Erbengemeinschaft (Potenzial)') score += 15;
+    else if (ownerType === 'Privatperson (Potenzial)') score += 10;
+    // Firma = lower score (harder to acquire)
+    else if (ownerType === 'Firma' || ownerType === 'Immobilienfirma') score -= 5;
+  }
+  return Math.min(Math.max(score, 0), 100);
 }
 
 // ─── Leads List ──────────────────────────────────────────
@@ -1344,6 +1563,7 @@ function renderLeads() {
         ${l.flaeche ? `<span>${l.flaeche} m²</span>` : ''}
         ${l.geschosse ? `<span>${l.geschosse} Gesch.</span>` : ''}
         ${l.azReserve !== null && l.azReserve !== undefined ? `<span style="color:${l.azReserve > 0.2 ? 'var(--accent)' : l.azReserve > 0 ? 'var(--yellow)' : 'var(--red)'}">AZ-Res. ${l.azReserve >= 0 ? '+' : ''}${l.azReserve}</span>` : ''}
+        ${l.ownerType && l.ownerType !== 'Unbekannt' ? `<span style="color:${l.ownerType.includes('Erben') ? 'var(--yellow)' : l.ownerType.includes('Privat') ? 'var(--accent)' : '#ff6b6b'}">${l.ownerType.includes('Erben') ? '👥' : l.ownerType.includes('Privat') ? '👤' : '🏢'} ${l.ownerType}</span>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -1371,12 +1591,13 @@ function updateLeadsBadge() {
 // ─── CSV Export ──────────────────────────────────────────
 function exportCSV() {
   if (!savedLeads.length) return;
-  const headers = ['Score','Adresse','PLZ','Ort','Gemeinde','EGRID','Parzelle','Baujahr','Fläche m²','Geschosse','Wohnungen','Kategorie','Heizung','Bezeichnung','Zonentyp','AZ Max','AZ Aktuell','AZ Reserve','Lat','Lon','Gespeichert'];
+  const headers = ['Score','Adresse','PLZ','Ort','Gemeinde','EGRID','Parzelle','Baujahr','Fläche m²','Geschosse','Wohnungen','Kategorie','Heizung','Bezeichnung','Zonentyp','AZ Max','AZ Aktuell','AZ Reserve','Eigentümer-Typ','Firmen','Hinweise','Lat','Lon','Gespeichert'];
   const rows = savedLeads.map(l => [
     l.score, l.address, l.plz, l.ort, l.gemeinde, l.egrid, l.parcelNr,
     l.baujahr || '', l.flaeche || '', l.geschosse || '', l.wohnungen || '',
     l.kategorie, l.heizung, l.bezeichnung,
     l.zonentyp || '', l.azMax || '', l.azActual || '', l.azReserve ?? '',
+    l.ownerType || '', l.companies || '', l.ownerHints || '',
     l.lat, l.lon, l.savedAt
   ]);
   const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(';')).join('\n');
@@ -1467,6 +1688,8 @@ async function startAreaScan() {
           }
 
           const addr = bp.strname_deinr || `${(bp.strname || [''])[0]} ${bp.deinr || ''}`.trim();
+          // Heuristic owner type (no SPARQL during scan for performance)
+          const ownerInfo = classifyOwnerType([], bp);
           const lead = {
             id: Date.now() + Math.random(),
             egrid: bp.egrid || '—',
@@ -1487,10 +1710,13 @@ async function startAreaScan() {
             azMax: azMax,
             azActual: azActual,
             azReserve: azReserve,
+            ownerType: ownerInfo.type,
+            ownerHints: ownerInfo.hints.join('; '),
+            companies: '',
             lat: lat,
             lon: lon,
             buildings: 1,
-            score: calculateScore(bp, azReserve),
+            score: calculateScore(bp, azReserve, ownerInfo.type),
             savedAt: new Date().toISOString(),
           };
 
@@ -1549,6 +1775,7 @@ async function startAreaScan() {
           ${l.geschosse ? `<span>${l.geschosse} Gesch.</span>` : ''}
           ${l.wohnungen ? `<span>${l.wohnungen} Whg.</span>` : ''}
           ${l.azReserve !== null && l.azReserve !== undefined ? `<span style="color:${l.azReserve > 0.2 ? 'var(--accent)' : l.azReserve > 0 ? 'var(--yellow)' : 'var(--red)'}">AZ-Res. ${l.azReserve >= 0 ? '+' : ''}${l.azReserve}</span>` : ''}
+          ${l.ownerType && l.ownerType !== 'Unbekannt' ? `<span style="color:${l.ownerType.includes('Erben') ? 'var(--yellow)' : l.ownerType.includes('Privat') ? 'var(--accent)' : '#ff6b6b'}">${l.ownerType.includes('Erben') ? '👥' : l.ownerType.includes('Privat') ? '👤' : '🏢'} ${l.ownerType}</span>` : ''}
         </div>
       </div>`;
     }).join('');
