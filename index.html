@@ -1384,15 +1384,21 @@ async function identifyLocation(lat, lon) {
       const b0 = buildings[0].properties;
       const addr = b0.strname_deinr || '';
       const ort = b0.ggdename || '';
+      const featureRef = currentFeature; // capture local ref to avoid race condition
       const doOwnerLookup = async () => {
         let companies = [];
         if (addr && ort) {
           try { companies = await fetchCompaniesAtAddress(addr, ort); } catch(e) { console.warn('Zefix error:', e); }
         }
         const ownerInfo = classifyOwnerType(companies, b0);
-        currentFeature.ownerInfo = ownerInfo;
-        const ownerEl = document.getElementById('owner-info-section');
-        if (ownerEl) ownerEl.innerHTML = renderOwnerSection(ownerInfo);
+        // Only update if this is still the active feature (user hasn't clicked elsewhere)
+        if (currentFeature === featureRef) {
+          currentFeature.ownerInfo = ownerInfo;
+          const ownerEl = document.getElementById('owner-info-section');
+          if (ownerEl) ownerEl.innerHTML = renderOwnerSection(ownerInfo);
+        } else {
+          featureRef.ownerInfo = ownerInfo; // still store on the original feature
+        }
       };
       doOwnerLookup();
     }
@@ -1452,7 +1458,7 @@ function renderDetails(feat) {
   if (buildings.length > 0) {
     buildings.forEach((bld, i) => {
       const bp = bld.properties;
-      const addr = bp.strname_deinr || `${(bp.strname || [''])[0]} ${bp.deinr || ''}`.trim();
+      const addr = bp.strname_deinr || `${bp.strname || ''} ${bp.deinr || ''}`.trim();
       html += `<div class="detail-section">
         <div class="detail-section-title">GEBÄUDE ${buildings.length > 1 ? (i+1) + '/' + buildings.length : ''} — GWR</div>
         ${detailRow('Adresse', addr || '—')}
@@ -1714,7 +1720,7 @@ function saveAsLead() {
     id: Date.now(),
     egrid: p.egris_egrid || b0.egrid || '—',
     parcelNr: p.number || b0.lparz || '—',
-    address: b0.strname_deinr || `${(b0.strname || [''])[0]} ${b0.deinr || ''}`.trim() || '—',
+    address: b0.strname_deinr || `${b0.strname || ''} ${b0.deinr || ''}`.trim() || '—',
     plz: b0.dplz4 || '',
     ort: b0.dplzname || b0.ggdename || '—',
     gemeinde: b0.ggdename || '—',
@@ -2040,7 +2046,7 @@ async function startAreaScan() {
 
         for (const bld of (res.results || [])) {
           const bp = bld.properties;
-          if (!bp.gbauj || bp.gbauj > maxBaujahr) continue;
+          if (!bp.gbauj || bp.gbauj >= maxBaujahr) continue;
           if (bp.garea && bp.garea < minArea) continue;
 
           // Deduplicate by EGID across all gemeinden
@@ -2055,7 +2061,7 @@ async function startAreaScan() {
             azReserve = Math.round((azInfo.az - azActual) * 100) / 100;
           }
 
-          const addr = bp.strname_deinr || `${(bp.strname || [''])[0]} ${bp.deinr || ''}`.trim();
+          const addr = bp.strname_deinr || `${bp.strname || ''} ${bp.deinr || ''}`.trim();
           const ownerInfo = classifyOwnerType([], bp);
           const lead = {
             id: Date.now() + Math.random(),
@@ -2134,7 +2140,7 @@ async function startAreaScan() {
     ` + allScanLeads.map(l => {
       const scoreClass = l.score >= 60 ? 'score-high' : l.score >= 35 ? 'score-med' : 'score-low';
       // Check if already saved
-      const isSaved = savedLeads.find(s => s.egrid === l.egrid && l.egrid !== '—');
+      const isSaved = savedLeads.find(s => (s.egid && s.egid === l.egid) || (s.egrid === l.egrid && l.egrid !== '—'));
       return `<div class="lead-item ${isSaved ? 'is-saved' : ''}" onclick="map.flyTo([${l.lat},${l.lon}],18)">
         <div class="lead-item-header">
           <span class="lead-item-addr">${isSaved ? '✓ ' : ''}${l.address}</span>
@@ -2159,7 +2165,7 @@ function saveAllScanLeads() {
   if (!window._scanLeads) return;
   let added = 0;
   for (const l of window._scanLeads) {
-    if (!savedLeads.find(s => s.egrid === l.egrid && l.egrid !== '—')) {
+    if (!savedLeads.find(s => (s.egid && l.egid && s.egid === l.egid) || (s.egrid === l.egrid && l.egrid !== '—'))) {
       savedLeads.push(l);
       added++;
     }
@@ -2176,7 +2182,7 @@ function generatePDFReport() {
   const p = parcel?.properties || {};
   const b0 = buildings[0]?.properties || {};
   const azInfo = getMaxAZ(zoneInfo);
-  const addr = b0.strname_deinr || `${(b0.strname || [''])[0]} ${b0.deinr || ''}`.trim() || '—';
+  const addr = b0.strname_deinr || `${b0.strname || ''} ${b0.deinr || ''}`.trim() || '—';
 
   // Calculate AZ
   let azMax = azInfo?.az || null;
@@ -2296,6 +2302,7 @@ ${solarData ? `<h3>Solarpotenzial</h3>
 </body></html>`;
 
   const w = window.open('', '_blank');
+  if (!w) { showToast('Popup blockiert — bitte Popup-Blocker deaktivieren.'); return; }
   w.document.write(html);
   w.document.close();
   showToast('PDF-Report geöffnet — Drucken für PDF (Ctrl+P)');
