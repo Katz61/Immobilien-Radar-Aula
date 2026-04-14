@@ -927,44 +927,74 @@ let leadMarkersVisible = false;
 let scanRunning = false;
 let scanAbort = false;
 
-// ─── Renditekalkulator Konstanten (Kanton Zug) ───────────
-// Quelle: RealAdvisor.ch (realadvisor.ch/de/immobilienpreise-pro-m2/kanton-zug)
-// Stand: Februar 2026 — Median-Verkaufspreise & Jahresmieten
+// ─── Marktdaten-Quellen (Kanton Zug) ─────────────────────
+// Zwei unabhängige Quellen für Quervergleich
+
+// Quelle 1: RealAdvisor.ch — Median-Verkaufspreise & Jahresmieten
+// https://realadvisor.ch/de/immobilienpreise-pro-m2/kanton-zug
+// Stand: Februar 2026
 const REALADVISOR_PREISE = {
-  // Verkaufspreise CHF/m² pro Gemeinde (Median Wohnungen, Feb 2026)
   verkauf: {
     'Zug': 18834, 'Baar': 15504, 'Cham': 14781, 'Risch': 15383,
     'Steinhausen': 14189, 'Hünenberg': 13827, 'Unterägeri': 14090,
     'Oberägeri': 16428, 'Menzingen': 12774, 'Walchwil': 18654,
     'Neuheim': 12902, 'default': 15693
   },
-  // Jahresmiete CHF/m²/Jahr pro Gemeinde (abgeleitet aus Monatsmieten)
-  // Kanton Zug Median: Wohnungen CHF 433/m²/Jahr, Häuser CHF 412/m²/Jahr
   miete: {
     'Zug': 480, 'Baar': 420, 'Cham': 400, 'Risch': 410,
     'Steinhausen': 390, 'Hünenberg': 380, 'Unterägeri': 385,
     'Oberägeri': 440, 'Menzingen': 350, 'Walchwil': 470,
     'Neuheim': 355, 'default': 433
-  }
+  },
+  url: 'https://realadvisor.ch/de/immobilienpreise-pro-m2/kanton-zug',
+  stand: 'Feb 2026'
+};
+
+// Quelle 2: Comparis.ch — Durchschnittliche Kaufpreise pro m²
+// https://www.comparis.ch/immobilien/verkaufen/immobilienpreise/kanton-zug/
+// Stand: März 2024 (letzte Aktualisierung Comparis)
+const COMPARIS_PREISE = {
+  verkauf: {
+    'Zug': 14933, 'Baar': 14335, 'Cham': 13351, 'Risch': 13500,
+    'Steinhausen': 13200, 'Hünenberg': 12800, 'Unterägeri': 13100,
+    'Oberägeri': 14500, 'Menzingen': 11800, 'Walchwil': 15302,
+    'Neuheim': 11534, 'default': 13500
+  },
+  urls: {
+    'Zug': 'https://www.comparis.ch/immobilien/verkaufen/immobilienpreise/kanton-zug/zug-6300',
+    'Baar': 'https://www.comparis.ch/immobilien/verkaufen/immobilienpreise/kanton-zug/baar-6340',
+    'Cham': 'https://www.comparis.ch/immobilien/verkaufen/immobilienpreise/kanton-zug/cham-6330',
+    'Risch': 'https://www.comparis.ch/immobilien/verkaufen/immobilienpreise/kanton-zug/rotkreuz-6343',
+    'Steinhausen': 'https://www.comparis.ch/immobilien/verkaufen/immobilienpreise/kanton-zug/steinhausen-6312',
+    'Hünenberg': 'https://www.comparis.ch/immobilien/verkaufen/immobilienpreise/kanton-zug/huenenberg-6331',
+    'Unterägeri': 'https://www.comparis.ch/immobilien/verkaufen/immobilienpreise/kanton-zug/unteraegeri-6314',
+    'Oberägeri': 'https://www.comparis.ch/immobilien/verkaufen/immobilienpreise/kanton-zug/oberaegeri-6315',
+    'Menzingen': 'https://www.comparis.ch/immobilien/verkaufen/immobilienpreise/kanton-zug/menzingen-6313',
+    'Walchwil': 'https://www.comparis.ch/immobilien/verkaufen/immobilienpreise/kanton-zug/walchwil-6318',
+    'Neuheim': 'https://www.comparis.ch/immobilien/verkaufen/immobilienpreise/kanton-zug/neuheim-6345',
+    'default': 'https://www.comparis.ch/immobilien/verkaufen/immobilienpreise'
+  },
+  stand: 'Mär 2024'
 };
 
 const RENDITE_PARAMS = {
   // Baulandpreise CHF/m² nach Zonentyp (Richtwerte Kanton Zug 2026)
-  // Abgeleitet aus RealAdvisor-Verkaufspreisen und Baulandstatistik
+  // Abgeleitet aus RealAdvisor + Comparis Verkaufspreisen und Baulandstatistik
   landwert: {
     'Wohnzone 1': 2000, 'Wohnzone 2': 2500, 'Wohnzone 3': 3000,
     'Wohnzone 4': 3500, 'Wohnzone 5': 4000,
     'Kernzone': 4500, 'Mischzone': 2800, 'Zentrumszone': 5000,
     'Arbeitszone': 1500, 'default': 2500
   },
-  // Baukosten CHF/m² Geschossfläche (BKP 2024/2025)
+  // Baukosten CHF/m² Geschossfläche
+  // Quelle: Schweizer Baukostenplan (BKP) 2024/2025
   baukosten: {
     neubau: 5500,        // Neubau mittlerer Standard
     sanierung: 2800,     // Gesamtsanierung
     aufstockung: 4200    // Aufstockung/Anbau
   },
   // Mietpreise CHF/m²/Jahr netto nach Zonentyp
-  // Quelle: RealAdvisor Kanton Zug, Median CHF 433/m²/Jahr (Wohnungen)
+  // Quellen: RealAdvisor (CHF 433/m²/Jahr Median Zug) + Comparis Inserate
   miete: {
     'Wohnzone 1': 320, 'Wohnzone 2': 360, 'Wohnzone 3': 400,
     'Wohnzone 4': 420, 'Wohnzone 5': 440,
@@ -1685,9 +1715,11 @@ function renderDetails(feat) {
     const zonenKey = zoneInfo?.zonentyp || '';
     const gemeindeName = feat.gemeinde || '';
     const landwertM2 = RENDITE_PARAMS.landwert[zonenKey] || RENDITE_PARAMS.landwert['default'];
-    // Prefer Gemeinde-specific RealAdvisor data, fallback to zone-based
+    // Gemeinde-specific market data from both sources
     const raVerkauf = REALADVISOR_PREISE.verkauf[gemeindeName] || REALADVISOR_PREISE.verkauf['default'];
     const raMiete = REALADVISOR_PREISE.miete[gemeindeName] || REALADVISOR_PREISE.miete['default'];
+    const cpVerkauf = COMPARIS_PREISE.verkauf[gemeindeName] || COMPARIS_PREISE.verkauf['default'];
+    const cpUrl = COMPARIS_PREISE.urls[gemeindeName] || COMPARIS_PREISE.urls['default'];
     const mieteM2 = RENDITE_PARAMS.miete[zonenKey] || raMiete || RENDITE_PARAMS.miete['default'];
     
     let rkParcelArea = null;
@@ -1743,9 +1775,13 @@ function renderDetails(feat) {
       html += `<div class="detail-section">
         <div class="detail-section-title">💰 RENDITEKALKULATOR — 3 Szenarien</div>
         <div style="padding:4px 16px 8px;font-size:10px;color:var(--text2)">
-          Basis: Landwert ${fmt(landwertM2)} CHF/m² · Miete ${fmt(mieteM2)} CHF/m²/Jahr · ${zonenKey || 'Standard'}
-          ${gemeindeName ? `<br>📊 RealAdvisor ${gemeindeName}: Verkauf ${fmt(raVerkauf)} CHF/m² · Miete ${fmt(raMiete)} CHF/m²/Jahr` : ''}
+          Kalkulation: Landwert ${fmt(landwertM2)} CHF/m² · Miete ${fmt(mieteM2)} CHF/m²/Jahr · ${zonenKey || 'Standard'}
         </div>
+        ${gemeindeName ? `<div style="padding:0 16px 8px;font-size:10px;color:var(--text2)">
+          📊 <b>Marktdaten ${gemeindeName}:</b><br>
+          <a href="${REALADVISOR_PREISE.url}" target="_blank" style="color:var(--accent)">RealAdvisor</a> (${REALADVISOR_PREISE.stand}): ${fmt(raVerkauf)} CHF/m² Verkauf · ${fmt(raMiete)} CHF/m²/Jahr Miete<br>
+          <a href="${cpUrl}" target="_blank" style="color:var(--accent)">Comparis</a> (${COMPARIS_PREISE.stand}): ${fmt(cpVerkauf)} CHF/m² Verkauf
+        </div>` : ''}
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 16px 12px">
           <div style="background:rgba(184,240,74,0.05);border:1px solid rgba(184,240,74,0.15);border-radius:4px;padding:10px">
             <div style="font-size:10px;color:var(--accent);font-weight:700;margin-bottom:6px">🔧 SANIERUNG</div>
@@ -1778,18 +1814,27 @@ function renderDetails(feat) {
           </div>
         </div>
         <div style="padding:4px 16px 8px;font-size:9px;color:var(--muted)">
-          ⚠️ Richtwerte — keine Anlageberatung. Baukosten BKP 2024/25, Marktdaten <a href="https://realadvisor.ch/de/immobilienpreise-pro-m2/kanton-zug" target="_blank" style="color:var(--accent)">RealAdvisor.ch</a> Feb 2026.
+          ⚠️ Richtwerte — keine Anlageberatung. Quellen: <a href="https://realadvisor.ch/de/immobilienpreise-pro-m2/kanton-zug" target="_blank" style="color:var(--accent)">RealAdvisor</a> · <a href="${cpUrl}" target="_blank" style="color:var(--accent)">Comparis</a> · BKP 2024/25
         </div>
       </div>`;
     }
   }
   if (egrid || lat) {
+    const plz = b0.dplz4 || '';
+    const ortName = b0.ggdename || '';
+    const comparisGemUrl = COMPARIS_PREISE.urls[ortName] || COMPARIS_PREISE.urls['default'];
     html += `<div class="detail-section">
       <div class="detail-section-title">WEITERE INFORMATIONEN & LINKS</div>
       <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:10px;color:var(--muted);padding:0 0 2px">📊 Marktdaten & Preisquellen</div>
+        <a class="link-ext" href="https://www.comparis.ch/immobilien/mashup/show" target="_blank">→ Comparis «Was zahlt die Nachbarschaft» — Inseratspreise</a>
+        <a class="link-ext" href="${comparisGemUrl}" target="_blank">→ Comparis Quadratmeterpreise ${ortName || 'Kanton Zug'}</a>
+        <a class="link-ext" href="https://realadvisor.ch/de/immobilienpreise-pro-m2/kanton-zug" target="_blank">→ RealAdvisor Immobilienpreise Kanton Zug</a>
+        <div style="font-size:10px;color:var(--muted);padding:4px 0 2px">🏛️ Amtliche Quellen</div>
         ${egrid ? `<a class="link-ext" href="https://www.cadastre.ch/de/oereb.html?egrid=${egrid}" target="_blank">→ ÖREB-Kataster (Eigentumsbeschränkungen)</a>` : ''}
         ${egrid ? `<a class="link-ext" href="https://zugmap.ch/bmcl/?egrid=${egrid}" target="_blank">→ ZugMap — Detailansicht</a>` : ''}
-        <a class="link-ext" href="https://www.zg.ch/behoerden/volkswirtschaftsdirektion/grundbuchamt/grundbuchauszug" target="_blank">→ Grundbuchauszug bestellen (Kanton Zug)</a>
+        <a class="link-ext" href="https://www.zg.ch/behoerden/volkswirtschaftsdirektion/grundbuchamt/grundbuchauszug" target="_blank">→ Grundbuchauszug bestellen (Kanton Zug, ab CHF 45)</a>
+        <a class="link-ext" href="https://www.zg.ch/behoerden/volkswirtschaftsdirektion/grundbuchamt/eigentuemerauskunft" target="_blank">→ Eigentümerauskunft (Kanton Zug)</a>
         <a class="link-ext" href="https://www.zefix.admin.ch/de/search/entity/list" target="_blank">→ Zefix — Firmensuche (Eigentümer)</a>
         <a class="link-ext" href="https://map.geo.admin.ch/?topic=ech&bgLayer=ch.swisstopo.pixelkarte-farbe&E=${Math.round(e)}&N=${Math.round(n)}&zoom=12&layers=ch.bfs.gebaeude_wohnungs_register,ch.kantone.cadastralwebmap-farbe" target="_blank">→ map.geo.admin.ch</a>
         <a class="link-ext" href="https://www.sonnendach.ch/de" target="_blank">→ sonnendach.ch — Solarpotenzial</a>
