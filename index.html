@@ -883,9 +883,15 @@ function calculateActualAZ(bp, parcelArea) {
 async function fetchCompaniesAtAddress(street, locality) {
   if (!street || !locality) return [];
   try {
-    // Extract just the street name (remove house number)
+    // Extract street name and house number separately
+    const houseNumMatch = street.match(/\s+(\d+[a-zA-Z]?)\s*$/);
+    const houseNum = houseNumMatch ? houseNumMatch[1] : '';
     const streetName = street.replace(/\s*\d+[a-zA-Z]?\.?\s*$/, '').replace(/\s+/g, ' ').trim();
     if (!streetName) return [];
+
+    // SPARQL: match street name prefix + space (avoids "Blumenweg" matching "Blumenwegstrasse")
+    const streetFilterSparql = `FILTER(STRSTARTS(LCASE(?street), "${streetName.toLowerCase()} ") || LCASE(?street) = "${streetName.toLowerCase()}")`;
+
     const query = `
       PREFIX schema: <http://schema.org/>
       PREFIX admin: <https://schema.ld.admin.ch/>
@@ -900,8 +906,8 @@ async function fetchCompaniesAtAddress(street, locality) {
         ?adr schema:streetAddress ?street ;
              schema:addressLocality ?loc .
         FILTER(LCASE(?loc) = "${locality.toLowerCase()}")
-        FILTER(CONTAINS(LCASE(?street), "${streetName.toLowerCase()}"))
-      } LIMIT 10
+        ${streetFilterSparql}
+      } LIMIT 20
     `;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
@@ -917,9 +923,28 @@ async function fetchCompaniesAtAddress(street, locality) {
     clearTimeout(timeout);
     if (!resp.ok) return [];
     const data = await resp.json();
+
+    let bindings = data.results?.bindings || [];
+
+    // Client-side: filter by house number for exact address match
+    if (houseNum && bindings.length > 0) {
+      const exactMatches = bindings.filter(b => {
+        const regStreet = (b.street?.value || '').trim().toLowerCase();
+        const inputAddr = street.trim().toLowerCase();
+        // Exact full address match
+        if (regStreet === inputAddr) return true;
+        // Extract house number from registered address and compare
+        const regNumMatch = regStreet.match(/\s+(\d+[a-z]?)\s*$/);
+        const regNum = regNumMatch ? regNumMatch[1] : '';
+        return regNum === houseNum.toLowerCase();
+      });
+      // Only keep companies at this exact address (not just same street)
+      bindings = exactMatches;
+    }
+
     // Deduplicate by company name (SPARQL returns multiple identifiers per company)
     const seen = new Set();
-    return (data.results?.bindings || []).filter(b => {
+    return bindings.filter(b => {
       const name = b.name?.value || '';
       if (seen.has(name)) return false;
       seen.add(name);
@@ -972,8 +997,8 @@ function classifyOwnerType(companies, buildingData) {
   if (buildingData) {
     const bp = buildingData;
     const baujahr = bp.gbauj;
-    const kat = (bp.gkat_text || '').toLowerCase();
-    const klasse = (bp.gklas_text || '').toLowerCase();
+    const kat = (bp.gkat_text || decodeGkat(bp.gkat) || '').toLowerCase();
+    const klasse = (bp.gklas_text || decodeGklas(bp.gklas) || '').toLowerCase();
 
     // Einfamilienhaus from before 1970, likely elderly owner
     if (baujahr && baujahr < 1970 && kat.includes('einfamilienhaus')) {
@@ -1596,7 +1621,7 @@ function exportCSV() {
     l.score, l.address, l.plz, l.ort, l.gemeinde, l.egrid, l.parcelNr,
     l.baujahr || '', l.flaeche || '', l.geschosse || '', l.wohnungen || '',
     l.kategorie, l.heizung, l.bezeichnung,
-    l.zonentyp || '', l.azMax || '', l.azActual || '', l.azReserve ?? '',
+    l.zonentyp || '', l.azMax ?? '', l.azActual ?? '', l.azReserve ?? '',
     l.ownerType || '', l.companies || '', l.ownerHints || '',
     l.lat, l.lon, l.savedAt
   ]);
