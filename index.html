@@ -371,6 +371,44 @@
 
   .lead-item.is-saved { border-left: 3px solid var(--accent); }
   .lead-item.is-processed { opacity: 0.5; }
+  .lead-item.is-new { border-left: 3px solid var(--blue); }
+
+  /* ─── Lead Notes ─────────────────────────────────── */
+  .lead-note-btn {
+    font-size: 10px;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 2px 4px;
+    border: none;
+    background: none;
+    font-family: 'DM Mono', monospace;
+  }
+  .lead-note-btn:hover { color: var(--text); }
+  .lead-note-btn.has-note { color: var(--yellow); }
+  .lead-note-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    border-radius: 2px;
+    margin-top: 4px;
+    resize: vertical;
+    min-height: 40px;
+    outline: none;
+  }
+  .lead-note-input:focus { border-color: var(--accent); }
+  .lead-note-preview {
+    font-size: 10px;
+    color: var(--yellow);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 280px;
+  }
 
   /* ─── Lead Map Markers ──────────────────────────── */
   .lead-map-marker {
@@ -877,16 +915,44 @@
 
 // ─── State ────────────────────────────────────────────────
 let savedLeads = JSON.parse(localStorage.getItem('integralis_leads') || '[]');
-// Migrate old leads: add status field if missing
-savedLeads.forEach(l => { if (!l.status) l.status = 'neu'; });
+// Migrate old leads: add status field if missing, add notes field
+savedLeads.forEach(l => { if (!l.status) l.status = 'neu'; if (!l.notes) l.notes = ''; });
 localStorage.setItem('integralis_leads', JSON.stringify(savedLeads));
 
+let lastScanTimestamp = localStorage.getItem('integralis_last_scan') || null;
 let currentFeature = null;
 let markers = [];
 let leadMarkers = [];
 let leadMarkersVisible = false;
 let scanRunning = false;
 let scanAbort = false;
+
+// ─── Renditekalkulator Konstanten (Kanton Zug) ───────────
+const RENDITE_PARAMS = {
+  // Landwerte CHF/m² nach Zonentyp (Richtwerte Kanton Zug 2024)
+  landwert: {
+    'Wohnzone 1': 1200, 'Wohnzone 2': 1400, 'Wohnzone 3': 1600,
+    'Wohnzone 4': 1800, 'Wohnzone 5': 2000,
+    'Kernzone': 2200, 'Mischzone': 1500, 'Zentrumszone': 2500,
+    'Arbeitszone': 800, 'default': 1400
+  },
+  // Baukosten CHF/m² Geschossfläche (BKP 2024)
+  baukosten: {
+    neubau: 5500,        // Neubau mittlerer Standard
+    sanierung: 2800,     // Gesamtsanierung
+    aufstockung: 4200    // Aufstockung/Anbau
+  },
+  // Mietpreise CHF/m²/Jahr netto (Referenzmieten Zug 2024)
+  miete: {
+    'Wohnzone 1': 220, 'Wohnzone 2': 240, 'Wohnzone 3': 260,
+    'Wohnzone 4': 280, 'Wohnzone 5': 300,
+    'Kernzone': 320, 'Mischzone': 250, 'Zentrumszone': 340,
+    'Arbeitszone': 180, 'default': 240
+  },
+  betriebskosten_pct: 0.18,  // 18% des Mietertrags
+  verkaufsfaktor: 30,         // Verkaufspreis = Jahresmietertrag × Faktor
+  abbruchkosten_m2: 120       // CHF/m² Abbruchkosten
+};
 
 // ─── Lead Status Constants ────────────────────────────────
 const LEAD_STATUSES = {
@@ -1590,6 +1656,105 @@ function renderDetails(feat) {
 
   // ÖREB, Grundbuch & Links
   const egrid = p.egris_egrid || b0.egrid || '';
+
+  // ─── Renditekalkulator Section ───
+  if (azInfo && buildings.length > 0) {
+    const zonenKey = zoneInfo?.zonentyp || '';
+    const landwertM2 = RENDITE_PARAMS.landwert[zonenKey] || RENDITE_PARAMS.landwert['default'];
+    const mieteM2 = RENDITE_PARAMS.miete[zonenKey] || RENDITE_PARAMS.miete['default'];
+    
+    let rkParcelArea = null;
+    if (parcel?.geometry) {
+      try {
+        const coords = parcel.geometry.type === 'MultiPolygon'
+          ? parcel.geometry.coordinates[0][0]
+          : parcel.geometry.type === 'Polygon'
+            ? parcel.geometry.coordinates[0] : null;
+        if (coords && coords.length >= 3) {
+          let area = 0;
+          for (let ii = 0; ii < coords.length; ii++) {
+            const jj = (ii + 1) % coords.length;
+            area += coords[ii][0] * coords[jj][1];
+            area -= coords[jj][0] * coords[ii][1];
+          }
+          rkParcelArea = Math.round(Math.abs(area) / 2);
+        }
+      } catch(e) {}
+    }
+    if (!rkParcelArea && b0.garea) rkParcelArea = b0.garea * 4;
+
+    if (rkParcelArea) {
+      const aktuelleGF = (b0.garea || 0) * (b0.gastw || 1);
+      const maxGF = Math.round(azInfo.az * rkParcelArea);
+      const zusatzGF = Math.max(0, maxGF - aktuelleGF);
+      const landwert = rkParcelArea * landwertM2;
+
+      const san_kosten = aktuelleGF * RENDITE_PARAMS.baukosten.sanierung;
+      const san_invest = landwert + san_kosten;
+      const san_miete = aktuelleGF * mieteM2;
+      const san_netto = san_miete * (1 - RENDITE_PARAMS.betriebskosten_pct);
+      const san_rendite = san_invest > 0 ? ((san_netto / san_invest) * 100).toFixed(1) : '—';
+
+      const auf_kosten = san_kosten + (zusatzGF * RENDITE_PARAMS.baukosten.aufstockung);
+      const auf_invest = landwert + auf_kosten;
+      const auf_miete = maxGF * mieteM2;
+      const auf_netto = auf_miete * (1 - RENDITE_PARAMS.betriebskosten_pct);
+      const auf_rendite = auf_invest > 0 ? ((auf_netto / auf_invest) * 100).toFixed(1) : '—';
+
+      const neu_abbruch = aktuelleGF * RENDITE_PARAMS.abbruchkosten_m2;
+      const neu_kosten = maxGF * RENDITE_PARAMS.baukosten.neubau;
+      const neu_invest = landwert + neu_abbruch + neu_kosten;
+      const neu_miete = maxGF * mieteM2;
+      const neu_netto = neu_miete * (1 - RENDITE_PARAMS.betriebskosten_pct);
+      const neu_rendite = neu_invest > 0 ? ((neu_netto / neu_invest) * 100).toFixed(1) : '—';
+      const neu_verkauf = Math.round(neu_miete * RENDITE_PARAMS.verkaufsfaktor);
+      const neu_roi = neu_invest > 0 ? (((neu_verkauf - neu_invest) / neu_invest) * 100).toFixed(0) : '—';
+
+      const fmt = (v) => Math.round(v).toLocaleString('de-CH');
+      const renditeColor = (r) => parseFloat(r) >= 5 ? 'var(--accent)' : parseFloat(r) >= 3 ? 'var(--yellow)' : 'var(--red)';
+
+      html += `<div class="detail-section">
+        <div class="detail-section-title">💰 RENDITEKALKULATOR — 3 Szenarien</div>
+        <div style="padding:4px 16px 8px;font-size:10px;color:var(--text2)">
+          Basis: Landwert ${fmt(landwertM2)} CHF/m² · Miete ${fmt(mieteM2)} CHF/m²/Jahr · ${zonenKey || 'Standard'}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 16px 12px">
+          <div style="background:rgba(184,240,74,0.05);border:1px solid rgba(184,240,74,0.15);border-radius:4px;padding:10px">
+            <div style="font-size:10px;color:var(--accent);font-weight:700;margin-bottom:6px">🔧 SANIERUNG</div>
+            <div style="font-size:10px;color:var(--text2)">Investition</div>
+            <div style="font-size:13px;color:var(--text);font-weight:600">CHF ${fmt(san_invest)}</div>
+            <div style="font-size:10px;color:var(--text2);margin-top:4px">Nettomiete/Jahr</div>
+            <div style="font-size:12px;color:var(--text)">CHF ${fmt(san_netto)}</div>
+            <div style="font-size:10px;color:var(--text2);margin-top:4px">Nettorendite</div>
+            <div style="font-size:16px;font-weight:700;color:${renditeColor(san_rendite)}">${san_rendite}%</div>
+          </div>
+          <div style="background:rgba(240,196,74,0.05);border:1px solid rgba(240,196,74,0.15);border-radius:4px;padding:10px">
+            <div style="font-size:10px;color:var(--yellow);font-weight:700;margin-bottom:6px">📐 AUFSTOCKUNG</div>
+            <div style="font-size:10px;color:var(--text2)">Investition</div>
+            <div style="font-size:13px;color:var(--text);font-weight:600">CHF ${fmt(auf_invest)}</div>
+            <div style="font-size:10px;color:var(--text2);margin-top:4px">Nettomiete/Jahr</div>
+            <div style="font-size:12px;color:var(--text)">CHF ${fmt(auf_netto)}</div>
+            <div style="font-size:10px;color:var(--text2);margin-top:4px">Nettorendite</div>
+            <div style="font-size:16px;font-weight:700;color:${renditeColor(auf_rendite)}">${auf_rendite}%</div>
+            ${zusatzGF > 0 ? `<div style="font-size:9px;color:var(--text2);margin-top:4px">+${fmt(zusatzGF)} m² GF</div>` : ''}
+          </div>
+          <div style="background:rgba(74,158,240,0.05);border:1px solid rgba(74,158,240,0.15);border-radius:4px;padding:10px">
+            <div style="font-size:10px;color:var(--blue);font-weight:700;margin-bottom:6px">🏗️ NEUBAU</div>
+            <div style="font-size:10px;color:var(--text2)">Investition</div>
+            <div style="font-size:13px;color:var(--text);font-weight:600">CHF ${fmt(neu_invest)}</div>
+            <div style="font-size:10px;color:var(--text2);margin-top:4px">Nettomiete/Jahr</div>
+            <div style="font-size:12px;color:var(--text)">CHF ${fmt(neu_netto)}</div>
+            <div style="font-size:10px;color:var(--text2);margin-top:4px">Nettorendite</div>
+            <div style="font-size:16px;font-weight:700;color:${renditeColor(neu_rendite)}">${neu_rendite}%</div>
+            <div style="font-size:9px;color:var(--text2);margin-top:4px">ROI Verkauf: ${neu_roi}%</div>
+          </div>
+        </div>
+        <div style="padding:4px 16px 8px;font-size:9px;color:var(--muted)">
+          ⚠️ Richtwerte — keine Anlageberatung. Baukosten BKP 2024, Mieten Referenzwerte Zug.
+        </div>
+      </div>`;
+    }
+  }
   if (egrid || lat) {
     html += `<div class="detail-section">
       <div class="detail-section-title">WEITERE INFORMATIONEN & LINKS</div>
@@ -1719,6 +1884,7 @@ function saveAsLead() {
   const lead = {
     id: Date.now(),
     egrid: p.egris_egrid || b0.egrid || '—',
+    egid: b0.egid || null,
     parcelNr: p.number || b0.lparz || '—',
     address: b0.strname_deinr || `${b0.strname || ''} ${b0.deinr || ''}`.trim() || '—',
     plz: b0.dplz4 || '',
@@ -1744,11 +1910,12 @@ function saveAsLead() {
     buildings: buildings.length,
     score: calculateScore(b0, azReserve, currentFeature.ownerInfo?.type),
     status: 'neu',
+    notes: '',
     savedAt: new Date().toISOString(),
   };
 
-  // Don't save duplicates
-  if (savedLeads.find(l => l.egrid === lead.egrid && lead.egrid !== '—')) {
+  // Don't save duplicates (check both egrid and egid)
+  if (savedLeads.find(l => (l.egrid === lead.egrid && lead.egrid !== '—') || (l.egid && lead.egid && l.egid === lead.egid))) {
     showToast('Lead bereits gespeichert.');
     return;
   }
@@ -1835,9 +2002,11 @@ function renderLeads() {
     const scoreClass = l.score >= 60 ? 'score-high' : l.score >= 35 ? 'score-med' : 'score-low';
     const st = LEAD_STATUSES[l.status || 'neu'] || LEAD_STATUSES['neu'];
     const isDone = l.status === 'erledigt' || l.status === 'abgelehnt';
-    return `<div class="lead-item ${isDone ? 'is-processed' : ''}" onclick="flyToLead(${l.lat}, ${l.lon})">
+    const isNew = lastScanTimestamp && l.savedAt && l.savedAt > lastScanTimestamp;
+    const hasNote = l.notes && l.notes.trim().length > 0;
+    return `<div class="lead-item ${isDone ? 'is-processed' : ''} ${isNew ? 'is-new' : ''}" onclick="flyToLead(${l.lat}, ${l.lon})">
       <div class="lead-item-header">
-        <span class="lead-item-addr">${l.address}</span>
+        <span class="lead-item-addr">${isNew ? '🆕 ' : ''}${l.address}</span>
         <div style="display:flex;gap:6px;align-items:center">
           <span class="lead-status lead-status-${l.status || 'neu'}" onclick="event.stopPropagation();showStatusDropdown(event, ${l.id})">${st.icon} ${st.label}</span>
           <span class="lead-item-score ${scoreClass}">${l.score}</span>
@@ -1852,6 +2021,13 @@ function renderLeads() {
         ${l.azReserve !== null && l.azReserve !== undefined ? `<span style="color:${l.azReserve > 0.2 ? 'var(--accent)' : l.azReserve > 0 ? 'var(--yellow)' : 'var(--red)'}">AZ ${l.azReserve >= 0 ? '+' : ''}${l.azReserve}</span>` : ''}
         ${l.ownerType && l.ownerType !== 'Unbekannt' ? `<span style="color:${l.ownerType.includes('Erben') ? 'var(--yellow)' : l.ownerType.includes('Privat') ? 'var(--accent)' : '#ff6b6b'}">${l.ownerType.includes('Erben') ? '👥' : l.ownerType.includes('Privat') ? '👤' : '🏢'} ${l.ownerType}</span>` : ''}
         ${l.solarKlasse ? `<span>☀️ ${l.solarKlasse}</span>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+        <button class="lead-note-btn ${hasNote ? 'has-note' : ''}" onclick="event.stopPropagation();toggleLeadNotes(${l.id})">📝 ${hasNote ? 'NOTIZ' : 'NOTIZ+'}</button>
+        ${hasNote ? `<div class="lead-note-preview">${l.notes.substring(0, 60)}${l.notes.length > 60 ? '…' : ''}</div>` : ''}
+      </div>
+      <div id="lead-notes-${l.id}" style="display:none;margin-top:4px">
+        <textarea class="lead-note-input" placeholder="Notizen zu diesem Lead..." onblur="saveLeadNote(${l.id}, this.value)" onclick="event.stopPropagation()">${l.notes || ''}</textarea>
       </div>
     </div>`;
   }).join('');
@@ -1895,6 +2071,26 @@ function setLeadStatus(leadId, status) {
   }
 }
 
+// ─── Lead Notes ──────────────────────────────────────────
+function toggleLeadNotes(leadId) {
+  const el = document.getElementById('lead-notes-' + leadId);
+  if (!el) return;
+  const isVisible = el.style.display !== 'none';
+  el.style.display = isVisible ? 'none' : 'block';
+  if (!isVisible) {
+    const ta = el.querySelector('textarea');
+    if (ta) ta.focus();
+  }
+}
+
+function saveLeadNote(leadId, noteText) {
+  const lead = savedLeads.find(l => l.id === leadId);
+  if (lead) {
+    lead.notes = noteText;
+    localStorage.setItem('integralis_leads', JSON.stringify(savedLeads));
+  }
+}
+
 // ─── Lead Map Markers ────────────────────────────────────
 function toggleLeadMarkers() {
   if (leadMarkersVisible) {
@@ -1913,14 +2109,16 @@ function showLeadMarkers() {
   savedLeads.forEach(l => {
     if (!l.lat || !l.lon) return;
     const st = l.status || 'neu';
+    const scoreColor = l.score >= 60 ? '#b8f04a' : l.score >= 35 ? '#f0c44a' : '#9aa89e';
+    const scoreBorder = l.score >= 60 ? '#8bc834' : l.score >= 35 ? '#d4a830' : '#6b7a70';
     const icon = L.divIcon({
       className: '',
-      html: `<div class="lead-map-marker status-${st}" title="${l.address} (${LEAD_STATUSES[st]?.label || st})"></div>`,
-      iconSize: [16, 16],
-      iconAnchor: [8, 8]
+      html: `<div style="width:14px;height:14px;border-radius:50%;background:${scoreColor};border:2px solid ${scoreBorder};box-shadow:0 0 6px rgba(0,0,0,0.5)" title="${l.address} — Score ${l.score}"></div>`,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9]
     });
     const m = L.marker([l.lat, l.lon], { icon }).addTo(map);
-    m.bindPopup(`<b>${l.address}</b><br>${LEAD_STATUSES[st]?.icon || ''} ${LEAD_STATUSES[st]?.label || st}<br>Score: ${l.score}`);
+    m.bindPopup(`<b>${l.address}</b><br>${LEAD_STATUSES[st]?.icon || ''} ${LEAD_STATUSES[st]?.label || st}<br>Score: ${l.score}${l.notes ? '<br><i>' + l.notes.substring(0, 80) + '</i>' : ''}`);
     leadMarkers.push(m);
   });
 }
@@ -1958,15 +2156,16 @@ function updateLeadsBadge() {
 // ─── CSV Export ──────────────────────────────────────────
 function exportCSV() {
   if (!savedLeads.length) return;
-  const headers = ['Score','Status','Adresse','PLZ','Ort','Gemeinde','EGRID','Parzelle','Baujahr','Fläche m²','Geschosse','Wohnungen','Kategorie','Heizung','Bezeichnung','Zonentyp','AZ Max','AZ Aktuell','AZ Reserve','Eigentümer-Typ','Firmen','Hinweise','Solar Eignung','Solar kWh/Jahr','Lat','Lon','Gespeichert'];
+  const headers = ['Score','Status','Adresse','PLZ','Ort','Gemeinde','EGRID','EGID','Parzelle','Baujahr','Fläche m²','Geschosse','Wohnungen','Kategorie','Heizung','Bezeichnung','Zonentyp','AZ Max','AZ Aktuell','AZ Reserve','Eigentümer-Typ','Firmen','Hinweise','Solar Eignung','Solar kWh/Jahr','Notizen','Lat','Lon','Gespeichert'];
   const rows = savedLeads.map(l => [
     l.score, LEAD_STATUSES[l.status || 'neu']?.label || l.status || 'Neu',
-    l.address, l.plz, l.ort, l.gemeinde, l.egrid, l.parcelNr,
+    l.address, l.plz, l.ort, l.gemeinde, l.egrid, l.egid || '', l.parcelNr,
     l.baujahr || '', l.flaeche || '', l.geschosse || '', l.wohnungen || '',
     l.kategorie, l.heizung, l.bezeichnung,
     l.zonentyp || '', l.azMax ?? '', l.azActual ?? '', l.azReserve ?? '',
     l.ownerType || '', l.companies || '', l.ownerHints || '',
     l.solarKlasse || '', l.solarStrom || '',
+    (l.notes || '').replace(/"/g, '""'),
     l.lat, l.lon, l.savedAt
   ]);
   const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(';')).join('\n');
@@ -2122,6 +2321,8 @@ async function startAreaScan() {
 
   // Done
   scanRunning = false;
+  lastScanTimestamp = new Date().toISOString();
+  localStorage.setItem('integralis_last_scan', lastScanTimestamp);
   btn.textContent = '▶ GEBIET SCANNEN';
   document.getElementById('scan-dot').className = 'dot done';
   const gemLabel = selectedGemeinden.length === 1 ? selectedGemeinden[0] : `${selectedGemeinden.length} Gemeinden`;
