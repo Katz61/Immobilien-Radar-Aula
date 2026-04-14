@@ -616,8 +616,8 @@
           <div class="control-group">
             <label>MIN. GRUNDFLÄCHE (m²)</label>
             <div class="range-row">
-              <input type="range" id="range-area" min="100" max="5000" step="100" value="300">
-              <span class="range-val" id="val-area">300 m²</span>
+              <input type="range" id="range-area" min="0" max="5000" step="50" value="100">
+              <span class="range-val" id="val-area">100 m²</span>
             </div>
           </div>
           <div class="control-group">
@@ -1106,7 +1106,7 @@ async function startAreaScan() {
 
       try {
         const res = await fetchJSON(
-          `https://api3.geo.admin.ch/rest/services/ech/MapServer/identify?layers=all:ch.bfs.gebaeude_wohnungs_register&sr=2056&geometry=${e},${n}&mapExtent=${e-150},${n-150},${e+150},${n+150}&imageDisplay=200,200,96&geometryFormat=geojson&geometryType=esriGeometryPoint&limit=3&tolerance=30&returnGeometry=false&lang=de`
+          `https://api3.geo.admin.ch/rest/services/ech/MapServer/identify?layers=all:ch.bfs.gebaeude_wohnungs_register&sr=2056&geometry=${e},${n}&mapExtent=${e-200},${n-200},${e+200},${n+200}&imageDisplay=200,200,96&geometryFormat=geojson&geometryType=esriGeometryPoint&limit=10&tolerance=50&returnGeometry=false&lang=de`
         );
 
         for (const bld of (res.results || [])) {
