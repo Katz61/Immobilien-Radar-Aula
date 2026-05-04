@@ -932,14 +932,23 @@ let scanAbort = false;
 
 // Quelle 1: RealAdvisor.ch — Median-Verkaufspreise & Jahresmieten
 // https://realadvisor.ch/de/immobilienpreise-pro-m2/kanton-zug
-// Stand: Februar 2026
+// Stand: Mai 2026 — Preistrend: Wohnungen +5.3%, Häuser +3.8% (12 Monate)
 const REALADVISOR_PREISE = {
+  // Verkaufspreise CHF/m² (Median Wohnungen)
   verkauf: {
     'Zug': 18834, 'Baar': 15504, 'Cham': 14781, 'Risch': 15383,
     'Steinhausen': 14189, 'Hünenberg': 13827, 'Unterägeri': 14090,
     'Oberägeri': 16428, 'Menzingen': 12774, 'Walchwil': 18654,
     'Neuheim': 12902, 'default': 15693
   },
+  // Verkaufspreise CHF/m² (Median Häuser)
+  verkaufHaus: {
+    'Zug': 18020, 'Baar': 15273, 'Cham': 14773, 'Risch': 15209,
+    'Steinhausen': 14354, 'Hünenberg': 14412, 'Unterägeri': 15018,
+    'Oberägeri': 17269, 'Menzingen': 12547, 'Walchwil': 19215,
+    'Neuheim': 12067, 'default': 15505
+  },
+  // Jahresmiete CHF/m²/Jahr (Median: Wohnungen 433, Häuser 412)
   miete: {
     'Zug': 480, 'Baar': 420, 'Cham': 400, 'Risch': 410,
     'Steinhausen': 390, 'Hünenberg': 380, 'Unterägeri': 385,
@@ -947,7 +956,7 @@ const REALADVISOR_PREISE = {
     'Neuheim': 355, 'default': 433
   },
   url: 'https://realadvisor.ch/de/immobilienpreise-pro-m2/kanton-zug',
-  stand: 'Feb 2026'
+  stand: 'Mai 2026'
 };
 
 // Quelle 2: Comparis.ch — Durchschnittliche Kaufpreise pro m²
