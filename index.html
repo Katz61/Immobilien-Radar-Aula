@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Risikomanagement — Übersicht Geschäftsrisiken</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <div>
+      <div class="header-title">Übersicht Risikomanagement</div>
+      <div class="header-sub">Überprüfung und Beurteilung der Geschäftsrisiken — Steuerung erforderlicher Massnahmen</div>
+    </div>
+    <div class="header-meta">
+      <span class="badge-live">LIVE-MARKTDATEN</span>
+      <span class="header-date" id="current-date"></span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- MARKT-BANNER -->
+  <div class="market-banner" id="market-banner">
+    <div class="market-banner-title">Aktuelle Marktdaten — Quellen: UBS SREBI Q3/2025 &amp; The Market Chart Pack #271 (4. Mai 2026)</div>
+    <div class="market-items" id="market-items">
+      <span class="mitem"><span class="mitem-label">UBS Bubble Index</span><span class="mitem-val neutral">0.29 moderat</span></span>
+      <span class="mitem"><span class="mitem-label">SNB Leitzins</span><span class="mitem-val good">0.0%</span></span>
+      <span class="mitem"><span class="mitem-label">Eigenheimpreise CH</span><span class="mitem-val warn">+3.5% YoY</span></span>
+      <span class="mitem"><span class="mitem-label">PMI Industrie CH</span><span class="mitem-val good">53.3</span></span>
+      <span class="mitem"><span class="mitem-label">EUR/CHF</span><span class="mitem-val bad">~0.93</span></span>
+      <span class="mitem"><span class="mitem-label">Rohöl Brent</span><span class="mitem-val bad">&gt;$100</span></span>
+      <span class="mitem"><span class="mitem-label">Gold</span><span class="mitem-val warn">~$4'800</span></span>
+      <span class="mitem"><span class="mitem-label">Risk Barometer</span><span class="mitem-val neutral">54/100</span></span>
+    </div>
+  </div>
+
+  <!-- NAVIGATION -->
+  <nav class="nav">
+    <button class="nb active" data-tab="dash">Dashboard</button>
+    <button class="nb" data-tab="ext">1. Externe Aspekte</button>
+    <button class="nb" data-tab="int">2. Interne Aspekte</button>
+    <button class="nb" data-tab="markt">Marktlage</button>
+    <button class="nb" data-tab="ai">KI-Analyse</button>
+  </nav>
+
+  <!-- DASHBOARD -->
+  <div id="tab-dash" class="tab active">
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Gesamtrisiken</div>
+        <div class="kpi-value">51</div>
+        <div class="kpi-sub">erfasst</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Schwer</div>
+        <div class="kpi-value danger" id="k-s">—</div>
+        <div class="kpi-sub">Sofortmassnahmen</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Mittel</div>
+        <div class="kpi-value warn" id="k-m">—</div>
+        <div class="kpi-sub">zu überwachen</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Gering</div>
+        <div class="kpi-value good" id="k-g">—</div>
+        <div class="kpi-sub">im Griff</div>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="card">
+        <div class="card-title">Konsequenz-Verteilung</div>
+        <div class="chart-wrap"><canvas id="c1" role="img" aria-label="Tortendiagramm Konsequenzverteilung der Risiken">Schwer, Mittel, Gering</canvas></div>
+        <div class="legend">
+          <span class="leg-item"><span class="leg-dot danger-bg"></span>Schwer</span>
+          <span class="leg-item"><span class="leg-dot warn-bg"></span>Mittel</span>
+          <span class="leg-item"><span class="leg-dot good-bg"></span>Gering</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Risiken nach Bereich</div>
+        <div class="chart-wrap"><canvas id="c2" role="img" aria-label="Balkendiagramm Risiken nach Bereich"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Schwere Risiken — Sofortmassnahmen erforderlich</div>
+      <div id="top-risks"></div>
+    </div>
+  </div>
+
+  <!-- EXTERNE ASPEKTE -->
+  <div id="tab-ext" class="tab">
+    <div class="section-intro">
+      <strong>Ziel:</strong> Eigenständigkeit — Verantwortung gegenüber Staat, Umwelt und Gesellschaft, Geschäftspartnern
+    </div>
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:220px">Risiko</th>
+              <th style="width:90px">Konseq.</th>
+              <th style="width:80px">Verant.</th>
+              <th>Massnahme</th>
+            </tr>
+          </thead>
+          <tbody id="ext-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- INTERNE ASPEKTE -->
+  <div id="tab-int" class="tab">
+    <div class="section-intro">
+      <strong>Ziel:</strong> Wirtschaftlichkeit, Effizienz, Verantwortung gegenüber Mitarbeitern und Kunden
+    </div>
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:220px">Risiko</th>
+              <th style="width:90px">Konseq.</th>
+              <th style="width:80px">Verant.</th>
+              <th>Massnahme</th>
+            </tr>
+          </thead>
+          <tbody id="int-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MARKTLAGE -->
+  <div id="tab-markt" class="tab">
+    <div class="card">
+      <div class="card-title large">UBS Swiss Real Estate Bubble Index — Q3 2025</div>
+      <div class="metric-row">
+        <div class="metric"><div class="metric-val warn">0.29</div><div class="metric-label">Indexwert (moderat)</div></div>
+        <div class="metric"><div class="metric-val good">+3.5%</div><div class="metric-label">Eigenheimpreise real YoY</div></div>
+        <div class="metric"><div class="metric-val good">0%</div><div class="metric-label">SNB Leitzins</div></div>
+        <div class="metric"><div class="metric-val good">−0.52</div><div class="metric-label">Kosten-Score (gering)</div></div>
+      </div>
+      <div class="detail-text">
+        <p><strong>Fundament (erhöht, Score 1.67):</strong> Eigenheimpreise steigen stärker als Einkommen und Mieten. Preis-Miet- und Preis-Einkommens-Verhältnis gestiegen.</p>
+        <p><strong>Dynamik (moderat, Score 0.28):</strong> Reale Preissteigerung annualisiert ~2.2% (3J-Schnitt), über langfristigem Mittel von 1.5%.</p>
+        <p><strong>Kosten (gering, Score −0.52):</strong> Hypothekarzinsen gesunken — Nutzungskosten unter Mietkosten. Kaufanreiz bleibt bestehen.</p>
+        <p><strong>Ausblick 2026:</strong> Nominale Preissteigerung ~3%, Preiskorrektur unwahrscheinlich. Regionale Risiken: Stadt Zürich, Graubünden, Kanton Waadt erhöht.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title large">The Market Chart Pack #271 — 4. Mai 2026</div>
+      <div class="markt-grid">
+        <div class="markt-col">
+          <div class="markt-col-title">Konjunktur &amp; Zinsen</div>
+          <ul>
+            <li>SNB Leitzins: <strong class="good">0.0%</strong></li>
+            <li>PMI Industrie CH: <strong class="good">53.3 (Expansion)</strong></li>
+            <li>Globales BIP: <strong class="warn">~3.2% (abkühlend)</strong></li>
+            <li>Frühindikatoren CH: <strong class="warn">schwächer werdend</strong></li>
+            <li>10J CH Staatsanleihe: <strong>~0.6%</strong></li>
+          </ul>
+        </div>
+        <div class="markt-col">
+          <div class="markt-col-title">Märkte &amp; Rohstoffe</div>
+          <ul>
+            <li>SMI YTD: <strong class="danger">−1%</strong></li>
+            <li>EUR/CHF: <strong class="danger">~0.93 (Frankenstärke)</strong></li>
+            <li>Rohöl Brent: <strong class="danger">&gt;$100/Fass</strong></li>
+            <li>Gold: <strong class="warn">~$4'800/oz</strong></li>
+            <li>Energie-Sektor YTD: <strong class="good">+31.2%</strong></li>
+          </ul>
+        </div>
+        <div class="markt-col">
+          <div class="markt-col-title">Risikostimmung</div>
+          <ul>
+            <li>Risk Barometer: <strong class="warn">54/100 (neutral)</strong></li>
+            <li>VIX: <strong class="good">~18 (normalisiert)</strong></li>
+            <li>Bullen/Bären: <strong>im Gleichgewicht</strong></li>
+            <li>Iran-Krieg erhöht Energiepreise</li>
+          </ul>
+        </div>
+        <div class="markt-col">
+          <div class="markt-col-title">Auswirkung Bauunternehmen</div>
+          <ul>
+            <li><span class="badge-s">SCHWER</span> Energiekosten, Währung</li>
+            <li><span class="badge-m">MITTEL</span> Immobilienkosten</li>
+            <li><span class="badge-m">MITTEL</span> Konjunkturabkühlung</li>
+            <li><span class="badge-g">GERING</span> Zinsumfeld (SNB 0%)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KI-ANALYSE -->
+  <div id="tab-ai" class="tab">
+    <div class="card">
+      <div class="card-title large">KI-Analyse — Claude mit Marktkontext</div>
+      <p class="ai-intro">Claude analysiert euer originales Risikoregister (externe + interne Aspekte) mit den aktuellen Marktdaten aus UBS SREBI Q3/2025 und The Market Chart Pack Mai 2026.</p>
+
+      <div class="api-row">
+        <label class="api-label">Anthropic API-Key</label>
+        <input type="password" id="api-key" class="api-input" placeholder="sk-ant-..." autocomplete="off">
+        <button class="ai-btn" id="ai-btn" onclick="runAI()">✦ Analyse starten</button>
+      </div>
+      <p class="api-hint">Der API-Key wird nur lokal in Ihrem Browser verwendet und nicht gespeichert oder übertragen.</p>
+
+      <div class="ai-output" id="ai-output">
+Geben Sie einen Anthropic API-Key ein und starten Sie die Analyse.
+
+Claude bewertet Ihre schweren Risiken im Kontext der aktuellen Schweizer Marktlage und gibt konkrete Handlungsempfehlungen für GL und VR — spezifisch für ein Bauunternehmen.
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<footer class="footer">
+  <span>Risikomanagement-Tool</span>
+  <span>Quellen: UBS SREBI Q3/2025 &nbsp;|&nbsp; The Market Chart Pack #271, Mai 2026</span>
+</footer>
+
+<script src="data/risks.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
