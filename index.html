@@ -986,14 +986,41 @@ const COMPARIS_PREISE = {
   stand: 'Mär 2024'
 };
 
+// Quelle 3: immobilienindex.ch — Baulandpreise (Grundstückspreise) CHF/m²
+// https://www.immobilienindex.ch/ZG/{Gemeinde}/
+// Stand: 2026 (Modellpreise)
+const BODENPREISE = {
+  preise: {
+    'Zug': 2633, 'Baar': 1761, 'Cham': 2057, 'Risch': 1845,
+    'Steinhausen': 1772, 'Hünenberg': 2103, 'Unterägeri': 1695,
+    'Oberägeri': 1618, 'Menzingen': 1657, 'Walchwil': 1849,
+    'Neuheim': 1950, 'default': 2000
+  },
+  urls: {
+    'Zug': 'https://www.immobilienindex.ch/ZG/Zug/',
+    'Baar': 'https://www.immobilienindex.ch/ZG/Baar/',
+    'Cham': 'https://www.immobilienindex.ch/ZG/Cham/',
+    'Risch': 'https://www.immobilienindex.ch/ZG/Risch/',
+    'Steinhausen': 'https://www.immobilienindex.ch/ZG/Steinhausen/',
+    'Hünenberg': 'https://www.immobilienindex.ch/ZG/Huenenberg/',
+    'Unterägeri': 'https://www.immobilienindex.ch/ZG/Unteraegeri/',
+    'Oberägeri': 'https://www.immobilienindex.ch/ZG/Oberaegeri/',
+    'Menzingen': 'https://www.immobilienindex.ch/ZG/Menzingen/',
+    'Walchwil': 'https://www.immobilienindex.ch/ZG/Walchwil/',
+    'Neuheim': 'https://www.immobilienindex.ch/ZG/Neuheim/',
+    'default': 'https://www.immobilienindex.ch/ZG/Zug/'
+  },
+  stand: '2026'
+};
+
 const RENDITE_PARAMS = {
-  // Baulandpreise CHF/m² nach Zonentyp (Richtwerte Kanton Zug 2026)
-  // Abgeleitet aus RealAdvisor + Comparis Verkaufspreisen und Baulandstatistik
+  // Baulandpreise CHF/m² nach Zonentyp (Zuschlag auf Gemeinde-Bodenpreis)
+  // Basis: immobilienindex.ch Grundstückspreise + Zonenzuschlag
   landwert: {
-    'Wohnzone 1': 2000, 'Wohnzone 2': 2500, 'Wohnzone 3': 3000,
-    'Wohnzone 4': 3500, 'Wohnzone 5': 4000,
-    'Kernzone': 4500, 'Mischzone': 2800, 'Zentrumszone': 5000,
-    'Arbeitszone': 1500, 'default': 2500
+    'Wohnzone 1': 0.8, 'Wohnzone 2': 1.0, 'Wohnzone 3': 1.2,
+    'Wohnzone 4': 1.4, 'Wohnzone 5': 1.6,
+    'Kernzone': 1.8, 'Mischzone': 1.1, 'Zentrumszone': 2.0,
+    'Arbeitszone': 0.6, 'default': 1.0
   },
   // Baukosten CHF/m² Geschossfläche
   // Quelle: Schweizer Baukostenplan (BKP) 2024/2025
@@ -1723,9 +1750,14 @@ function renderDetails(feat) {
   if (azInfo && buildings.length > 0) {
     const zonenKey = zoneInfo?.zonentyp || '';
     const gemeindeName = feat.gemeinde || '';
-    const landwertM2 = RENDITE_PARAMS.landwert[zonenKey] || RENDITE_PARAMS.landwert['default'];
+    // Bodenpreis = Gemeinde-Basispreis × Zonenfaktor
+    const bodenBasis = BODENPREISE.preise[gemeindeName] || BODENPREISE.preise['default'];
+    const zonenFaktor = RENDITE_PARAMS.landwert[zonenKey] || RENDITE_PARAMS.landwert['default'];
+    const landwertM2 = Math.round(bodenBasis * zonenFaktor);
+    const bodenUrl = BODENPREISE.urls[gemeindeName] || BODENPREISE.urls['default'];
     // Gemeinde-specific market data from both sources
     const raVerkauf = REALADVISOR_PREISE.verkauf[gemeindeName] || REALADVISOR_PREISE.verkauf['default'];
+    const raVerkaufHaus = REALADVISOR_PREISE.verkaufHaus?.[gemeindeName] || REALADVISOR_PREISE.verkaufHaus?.['default'] || raVerkauf;
     const raMiete = REALADVISOR_PREISE.miete[gemeindeName] || REALADVISOR_PREISE.miete['default'];
     const cpVerkauf = COMPARIS_PREISE.verkauf[gemeindeName] || COMPARIS_PREISE.verkauf['default'];
     const cpUrl = COMPARIS_PREISE.urls[gemeindeName] || COMPARIS_PREISE.urls['default'];
@@ -1784,12 +1816,13 @@ function renderDetails(feat) {
       html += `<div class="detail-section">
         <div class="detail-section-title">💰 RENDITEKALKULATOR — 3 Szenarien</div>
         <div style="padding:4px 16px 8px;font-size:10px;color:var(--text2)">
-          Kalkulation: Landwert ${fmt(landwertM2)} CHF/m² · Miete ${fmt(mieteM2)} CHF/m²/Jahr · ${zonenKey || 'Standard'}
+          Kalkulation: <a href="${bodenUrl}" target="_blank" style="color:var(--accent)">Bodenpreis</a> ${fmt(landwertM2)} CHF/m² (Basis ${fmt(bodenBasis)} × ${zonenFaktor.toFixed(1)} Zonenfaktor) · Miete ${fmt(mieteM2)} CHF/m²/Jahr · ${zonenKey || 'Standard'}
         </div>
         ${gemeindeName ? `<div style="padding:0 16px 8px;font-size:10px;color:var(--text2)">
           📊 <b>Marktdaten ${gemeindeName}:</b><br>
-          <a href="${REALADVISOR_PREISE.url}" target="_blank" style="color:var(--accent)">RealAdvisor</a> (${REALADVISOR_PREISE.stand}): ${fmt(raVerkauf)} CHF/m² Verkauf · ${fmt(raMiete)} CHF/m²/Jahr Miete<br>
-          <a href="${cpUrl}" target="_blank" style="color:var(--accent)">Comparis</a> (${COMPARIS_PREISE.stand}): ${fmt(cpVerkauf)} CHF/m² Verkauf
+          <a href="${REALADVISOR_PREISE.url}" target="_blank" style="color:var(--accent)">RealAdvisor</a> (${REALADVISOR_PREISE.stand}): ${fmt(raVerkauf)} CHF/m² Whg · ${fmt(raVerkaufHaus)} CHF/m² Haus · ${fmt(raMiete)} CHF/m²/J Miete<br>
+          <a href="${cpUrl}" target="_blank" style="color:var(--accent)">Comparis</a> (${COMPARIS_PREISE.stand}): ${fmt(cpVerkauf)} CHF/m² Verkauf<br>
+          <a href="${bodenUrl}" target="_blank" style="color:var(--accent)">Bodenpreis</a> (${BODENPREISE.stand}): ${fmt(bodenBasis)} CHF/m² Bauland
         </div>` : ''}
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 16px 12px">
           <div style="background:rgba(184,240,74,0.05);border:1px solid rgba(184,240,74,0.15);border-radius:4px;padding:10px">
@@ -1823,7 +1856,7 @@ function renderDetails(feat) {
           </div>
         </div>
         <div style="padding:4px 16px 8px;font-size:9px;color:var(--muted)">
-          ⚠️ Richtwerte — keine Anlageberatung. Quellen: <a href="https://realadvisor.ch/de/immobilienpreise-pro-m2/kanton-zug" target="_blank" style="color:var(--accent)">RealAdvisor</a> · <a href="${cpUrl}" target="_blank" style="color:var(--accent)">Comparis</a> · BKP 2024/25
+          ⚠️ Richtwerte — keine Anlageberatung. Quellen: <a href="https://realadvisor.ch/de/immobilienpreise-pro-m2/kanton-zug" target="_blank" style="color:var(--accent)">RealAdvisor</a> · <a href="${cpUrl}" target="_blank" style="color:var(--accent)">Comparis</a> · <a href="${bodenUrl}" target="_blank" style="color:var(--accent)">immobilienindex.ch</a> · BKP 2024/25
         </div>
       </div>`;
     }
@@ -1839,6 +1872,7 @@ function renderDetails(feat) {
         <a class="link-ext" href="https://www.comparis.ch/immobilien/mashup/show" target="_blank">→ Comparis «Was zahlt die Nachbarschaft» — Inseratspreise</a>
         <a class="link-ext" href="${comparisGemUrl}" target="_blank">→ Comparis Quadratmeterpreise ${ortName || 'Kanton Zug'}</a>
         <a class="link-ext" href="https://realadvisor.ch/de/immobilienpreise-pro-m2/kanton-zug" target="_blank">→ RealAdvisor Immobilienpreise Kanton Zug</a>
+        <a class="link-ext" href="${BODENPREISE.urls[ortName] || BODENPREISE.urls['default']}" target="_blank">→ Bodenpreise / Baulandpreise ${ortName || 'Kanton Zug'} (immobilienindex.ch)</a>
         <div style="font-size:10px;color:var(--muted);padding:4px 0 2px">🏛️ Amtliche Quellen</div>
         ${egrid ? `<a class="link-ext" href="https://www.cadastre.ch/de/oereb.html?egrid=${egrid}" target="_blank">→ ÖREB-Kataster (Eigentumsbeschränkungen)</a>` : ''}
         ${egrid ? `<a class="link-ext" href="https://zugmap.ch/bmcl/?egrid=${egrid}" target="_blank">→ ZugMap — Detailansicht</a>` : ''}
@@ -2250,7 +2284,7 @@ function exportCSV() {
     (l.notes || '').replace(/"/g, '""'),
     l.lat, l.lon, l.savedAt
   ]);
-  const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(';')).join('\n');
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
