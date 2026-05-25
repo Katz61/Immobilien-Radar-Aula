@@ -10,7 +10,7 @@
 
 **Aktivität:** Prototyp v1.0 erstellt (Session 1)
 **Session:** https://app.devin.ai/sessions/6c9e3cd0ea3646458157c02b9e680a94
-**Branch:** `devin/1776171175-integralis-lead-engine`
+**Branch:** `devin/1776171175-lead-engine` (historisch)
 **Status:** Abgeschlossen
 
 **Was wurde gebaut:**

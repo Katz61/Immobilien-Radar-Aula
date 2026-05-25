@@ -24,7 +24,7 @@ export function LeadsPanel() {
       l.zonentyp || '', l.azMax ?? '', l.azActual ?? '', l.azReserve ?? '',
       l.ownerType || '', l.companies || '', l.ownerHints || '',
       l.solarKlasse || '', l.solarStrom || '',
-      (l.notes || '').replace(/"/g, '""'),
+      (l.notes || ''),
       l.lat, l.lon, l.savedAt,
     ]);
     const csv = [headers, ...rows]

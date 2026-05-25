@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useStore } from '../../store/useStore';
-import { wgs84ToLV95 } from '../../utils/coordinates';
+import { wgs84ToLV95, escapeHtml } from '../../utils/coordinates';
 import { identifyParcel, identifyBuildings } from '../../services/geo-admin';
 import { fetchZoneInfo } from '../../services/geodienste';
 import { fetchSolarData } from '../../services/solar';
@@ -206,13 +206,13 @@ export function MapView() {
       const scoreBorder = l.score >= 60 ? '#8bc834' : l.score >= 35 ? '#d4a830' : '#6b7a70';
       const icon = L.divIcon({
         className: '',
-        html: `<div style="width:14px;height:14px;border-radius:50%;background:${scoreColor};border:2px solid ${scoreBorder};box-shadow:0 0 6px rgba(0,0,0,0.5)" title="${l.address} — Score ${l.score}"></div>`,
+        html: `<div style="width:14px;height:14px;border-radius:50%;background:${scoreColor};border:2px solid ${scoreBorder};box-shadow:0 0 6px rgba(0,0,0,0.5)" title="${escapeHtml(l.address)} — Score ${l.score}"></div>`,
         iconSize: [18, 18],
         iconAnchor: [9, 9],
       });
       const m = L.marker([l.lat, l.lon], { icon }).addTo(mapRef.current!);
       m.bindPopup(
-        `<b>${l.address}</b><br>Score: ${l.score}${l.notes ? '<br><i>' + l.notes.substring(0, 80) + '</i>' : ''}`,
+        `<b>${escapeHtml(l.address)}</b><br>Score: ${l.score}${l.notes ? '<br><i>' + escapeHtml(l.notes.substring(0, 80)) + '</i>' : ''}`,
       );
       leadMarkersRef.current.push(m);
     });

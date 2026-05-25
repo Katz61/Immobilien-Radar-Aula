@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useStore } from '../../store/useStore';
 import { GEMEINDEN } from '../../data/gemeinden';
-import { wgs84ToLV95 } from '../../utils/coordinates';
+import { wgs84ToLV95, escapeHtml } from '../../utils/coordinates';
 import { scanBuildings } from '../../services/geo-admin';
 import { fetchZoneInfo, getMaxAZ } from '../../services/geodienste';
 import { calculateScore } from '../../utils/scoring';
@@ -112,7 +112,7 @@ export function ScanPanel() {
           window.dispatchEvent(new CustomEvent('map:addMarker', {
             detail: {
               lat, lon, score, address: addr,
-              popup: `<b>${addr}</b><br>Score: ${score}<br>Bj. ${bp.gbauj || '\u2014'}`,
+              popup: `<b>${escapeHtml(addr)}</b><br>Score: ${score}<br>Bj. ${bp.gbauj || '\u2014'}`,
             },
           }));
         }

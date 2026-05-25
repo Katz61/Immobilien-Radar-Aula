@@ -16,6 +16,11 @@ export function wgs84ToLV95(lat: number, lon: number): [number, number] {
   return [Math.round(E * 100) / 100, Math.round(N * 100) / 100];
 }
 
+/** Escape string for safe HTML interpolation */
+export function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 /** Calculate polygon area using the shoelace formula (for LV95 coords in meters) */
 export function calculatePolygonArea(coords: number[][]): number {
   let area = 0;

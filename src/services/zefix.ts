@@ -2,6 +2,10 @@ import type { Company, OwnerInfo } from '../types';
 import { decodeGkat, decodeGklas } from '../utils/decoders';
 import type { BuildingProperties } from '../types';
 
+function escapeSparql(str: string): string {
+  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
 export async function fetchCompaniesAtAddress(street: string, locality: string): Promise<Company[]> {
   if (!street || !locality) return [];
   try {
@@ -10,7 +14,9 @@ export async function fetchCompaniesAtAddress(street: string, locality: string):
     const streetName = street.replace(/\s*\d+[a-zA-Z]?\.?\s*$/, '').replace(/\s+/g, ' ').trim();
     if (!streetName) return [];
 
-    const streetFilterSparql = `FILTER(STRSTARTS(LCASE(?street), "${streetName.toLowerCase()} ") || LCASE(?street) = "${streetName.toLowerCase()}")`;
+    const safeStreet = escapeSparql(streetName.toLowerCase());
+    const safeLocality = escapeSparql(locality.toLowerCase());
+    const streetFilterSparql = `FILTER(STRSTARTS(LCASE(?street), "${safeStreet} ") || LCASE(?street) = "${safeStreet}")`;
 
     const query = `
       PREFIX schema: <http://schema.org/>
@@ -25,7 +31,7 @@ export async function fetchCompaniesAtAddress(street: string, locality: string):
         FILTER(lang(?type)="de")
         ?adr schema:streetAddress ?street ;
              schema:addressLocality ?loc .
-        FILTER(LCASE(?loc) = "${locality.toLowerCase()}")
+        FILTER(LCASE(?loc) = "${safeLocality}")
         ${streetFilterSparql}
       } LIMIT 20
     `;
