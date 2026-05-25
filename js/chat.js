@@ -122,27 +122,35 @@
         var reader = response.body.getReader();
         var decoder = new TextDecoder();
         var fullText = '';
+        var buffer = '';
+
+        function processLines(lines) {
+          lines.forEach(function (line) {
+            if (!line.trim()) return;
+            try {
+              var obj = JSON.parse(line);
+              if (obj.message && obj.message.content) {
+                fullText += obj.message.content;
+                contentEl.textContent = fullText;
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+              }
+            } catch (e) { /* incomplete line, will be buffered */ }
+          });
+        }
 
         function read() {
           reader.read().then(function (result) {
             if (result.done) {
+              if (buffer.trim()) processLines([buffer]);
               messages.push({ role: 'assistant', content: fullText });
               isStreaming = false;
               sendBtn.disabled = false;
               return;
             }
-            var chunk = decoder.decode(result.value, { stream: true });
-            var lines = chunk.split('\n').filter(function (l) { return l.trim(); });
-            lines.forEach(function (line) {
-              try {
-                var obj = JSON.parse(line);
-                if (obj.message && obj.message.content) {
-                  fullText += obj.message.content;
-                  contentEl.textContent = fullText;
-                  messagesEl.scrollTop = messagesEl.scrollHeight;
-                }
-              } catch (e) { /* ignore parse errors on partial chunks */ }
-            });
+            buffer += decoder.decode(result.value, { stream: true });
+            var lines = buffer.split('\n');
+            buffer = lines.pop();
+            processLines(lines);
             read();
           }).catch(function (err) {
             contentEl.textContent = fullText || 'Fehler beim Lesen der Antwort: ' + err.message;
