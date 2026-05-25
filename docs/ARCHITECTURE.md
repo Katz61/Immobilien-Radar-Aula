@@ -1,158 +1,93 @@
-# Architektur-Übersicht — Leadmaschine Liegenschaften
+# Architektur: K AG Foresight Radar
 
-## Aktueller Stand (Phase 1 — Prototyp)
+## Ist-Zustand (Prototyp)
 
-```
-┌─────────────────────────────────────────────┐
-│              Browser (Client)                │
-│                                              │
-│  ┌──────────┐  ┌──────────┐  ┌───────────┐  │
-│  │  Leaflet  │  │   UI     │  │ localStorage│ │
-│  │  Karte    │  │  Sidebar │  │   (Leads)  │ │
-│  └────┬─────┘  └────┬─────┘  └───────────┘  │
-│       │              │                        │
-│       └──────┬───────┘                        │
-│              │                                │
-└──────────────┼────────────────────────────────┘
-               │ HTTPS (öffentliche APIs)
-               ▼
-┌──────────────────────────────────────────────┐
-│           Öffentliche Datenquellen            │
-│                                               │
-│  geo.admin.ch    geodienste.ch   sonnendach.ch│
-│  (GWR, Parzelle) (Zonenplan)    (Solar)      │
-│                                               │
-│  ld.admin.ch                                  │
-│  (Zefix/SPARQL)                               │
-└───────────────────────────────────────────────┘
-```
-
-**Merkmale Phase 1:**
-- Alles im Browser (kein Backend)
-- Daten in localStorage (geht verloren bei Browser-Wechsel)
-- Keine Authentifizierung
-- Single-User
-- Einzel-HTML-Datei (2740 Zeilen)
-
-## Phase 2 — Professionalisierung (aktuell)
+### Übersicht
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                  Frontend (SPA)                      │
-│                                                      │
-│  Vite + React + TypeScript + Tailwind CSS            │
-│                                                      │
-│  ┌─────────┐ ┌──────────┐ ┌────────┐ ┌───────────┐  │
-│  │   Map   │ │ Details  │ │  Scan  │ │   Leads   │  │
-│  │Component│ │  Panel   │ │ Engine │ │ CRM Panel │  │
-│  └────┬────┘ └────┬─────┘ └───┬────┘ └─────┬─────┘  │
-│       │           │           │             │         │
-│       └─────┬─────┴───────────┴─────────────┘         │
-│             │                                         │
-│       ┌─────┴──────┐  ┌─────────────┐                │
-│       │  Services  │  │   Zustand   │                │
-│       │  (API)     │  │   Store     │                │
-│       └─────┬──────┘  └─────────────┘                │
-└─────────────┼─────────────────────────────────────────┘
-              │ HTTPS
-              ▼
-┌──────────────────────────────────────────────┐
-│           Öffentliche Datenquellen            │
-└───────────────────────────────────────────────┘
+Browser
+  ├── index.html (5 Tabs, statisch)
+  ├── css/style.css (Styling, Light/Dark Mode)
+  ├── data/fields.js (19 Felder, Cluster, Scores)
+  ├── js/app.js (Scoring-Engine, Charts, Navigation)
+  ├── js/radar.js (D3.js Radar-Visualisierung)
+  └── CDN
+        ├── D3.js v7.9.0
+        └── Chart.js v4.4.1
 ```
 
-**Merkmale Phase 2:**
-- Modulare React-Komponenten
-- TypeScript für Typsicherheit
-- Zustand für State Management
-- Tailwind CSS für konsistentes Design
-- Daten weiterhin in localStorage
-- Kein Backend (noch)
+### Datenfluss
 
-## Zielarchitektur (Phase 3 — Produktion)
+1. `fields.js` definiert FIELDS, CLUSTERS, DIMENSIONS, ZONES als globale Konstanten
+2. `app.js` berechnet Scores beim Laden (`enrichFields()`)
+3. `app.js` rendert Dashboard, Cluster-View, Tabelle, Methodik
+4. `radar.js` rendert D3.js SVG mit Zone-Ringen und Feld-Punkten
+5. Interaktionen (Hover, Click) navigieren zur Detail-Ansicht
 
-```
-┌───────────────────────────────────────────────────────────┐
-│                    Kunde (Browser)                         │
-│                                                            │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │              React Frontend (SPA)                     │  │
-│  │  Map │ Details │ Scan │ Leads/CRM │ Reports │ Admin  │  │
-│  └──────────────────────┬───────────────────────────────┘  │
-└─────────────────────────┼──────────────────────────────────┘
-                          │ HTTPS
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   Backend (Node.js/Express)                   │
-│                   CH-Hosting (z.B. Infomaniak, Swisscom)     │
-│                                                              │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────────┐  │
-│  │   Auth   │  │   API    │  │  Scan    │  │  Export    │  │
-│  │  (Login) │  │ Routes   │  │  Worker  │  │  (CSV/PDF) │  │
-│  └──────────┘  └──────────┘  └──────────┘  └────────────┘  │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │              PostgreSQL Datenbank                     │   │
-│  │  Leads │ Scans │ Notizen │ Benutzer │ Mandanten      │   │
-│  └──────────────────────────────────────────────────────┘   │
-└──────────┬───────────────────────────────────────────────────┘
-           │ HTTPS
-           ▼
-┌───────────────────────────────────────────────┐
-│           Öffentliche Datenquellen             │
-└────────────────────────────────────────────────┘
-```
-
-**Merkmale Phase 3:**
-- CH-Hosting (Daten bleiben in der Schweiz)
-- Multi-Mandant (mehrere Kunden möglich)
-- Authentifizierung (Login pro Mandant)
-- Server-seitige Datenhaltung (PostgreSQL)
-- Background-Scan-Jobs (Worker)
-- Test- und Produktionsumgebung getrennt
-- API für Drittsysteme
-
-## Technologie-Stack
-
-| Schicht | Phase 2 (aktuell) | Phase 3 (geplant) |
-|---------|-------------------|---------------------|
-| Frontend | React + TypeScript + Tailwind | React + TypeScript + Tailwind |
-| Build | Vite | Vite |
-| State | Zustand | Zustand + React Query |
-| Karte | Leaflet + Swisstopo WMS | Leaflet + Swisstopo WMS |
-| Backend | Keins (Client-only) | Node.js + Express |
-| Datenbank | localStorage | PostgreSQL |
-| Auth | Keine | JWT / Session-basiert |
-| Hosting | Devin Apps / GitHub Pages | CH-Host (Infomaniak o.ä.) |
-| CI/CD | GitHub Actions | GitHub Actions |
-
-## Modulstruktur (Phase 2)
+### Scoring-Engine
 
 ```
-src/
-├── types/           # TypeScript-Typdefinitionen
-│   └── index.ts     # Lead, Building, Zone, Solar, Owner, etc.
-├── data/            # Statische Daten und Konfiguration
-│   ├── gemeinden.ts # Gemeinde-Koordinaten und Bounding Boxes
-│   ├── az-lookup.ts # Ausnützungsziffer-Tabellen (Bauordnung)
-│   └── marktdaten.ts# Preise (RealAdvisor, Comparis, Boden)
-├── services/        # API-Clients
-│   ├── geo-admin.ts # geo.admin.ch (GWR, Parzellen, Suche)
-│   ├── zefix.ts     # Zefix SPARQL (Firmensuche)
-│   ├── geodienste.ts# geodienste.ch (Zonenplan)
-│   └── solar.ts     # sonnendach.ch (Solarpotenzial)
-├── utils/           # Hilfsfunktionen
-│   ├── coordinates.ts# WGS84 ↔ LV95 Konvertierung
-│   ├── decoders.ts  # GWR-Code Decoder (Gkat, Heizung, etc.)
-│   └── scoring.ts   # Lead-Score Berechnung
-├── store/           # State Management (Zustand)
-│   └── useStore.ts  # Globaler App-State
-├── components/      # React-Komponenten
-│   ├── layout/      # Header, Sidebar, Layout
-│   ├── map/         # Kartenkomponente
-│   ├── details/     # Detail-Ansicht (Parzelle, Gebäude, AZ)
-│   ├── leads/       # Lead-Liste, Filter, Status, Export
-│   ├── scan/        # Scan-Konfiguration und -Steuerung
-│   └── common/      # Buttons, Badges, Toast, etc.
-└── App.tsx          # Hauptkomponente
+Gesamtscore = Σ (Dimension_i × Gewicht_i)
+
+Dimensionen:
+  velocity  × 0.20
+  impact    × 0.25
+  market    × 0.20
+  talent    × 0.15
+  readiness × 0.20
+  ─────────────────
+  Total     = 1.00
+
+Zone = Score ≥ 75 → ACT
+       Score ≥ 50 → PREPARE
+       Score ≥ 25 → MONITOR
+       Score <  25 → SCAN
 ```
+
+### Kein Backend
+
+Der Prototyp hat kein Backend. Alle Daten sind in `data/fields.js` hartcodiert. Das ist beabsichtigt für Phase 1.
+
+## Zielarchitektur (Phase 2+)
+
+### Geplante Komponenten
+
+```
+Browser (SPA)
+  ├── Frontend (wie heute, erweitert)
+  └── REST API Calls
+        │
+        ▼
+API Server (Node.js oder Python)
+  ├── /api/fields — Handlungsfelder + Scores
+  ├── /api/scores/update — Score-Aktualisierung
+  └── /api/trends — Zeitverlaufsdaten
+        │
+        ▼
+Datenquellen (automatisiert)
+  ├── Google Trends API → Velocity
+  ├── arXiv API → Velocity
+  ├── GDELT / News API → Impact Depth
+  ├── LinkedIn / Indeed → Talent Signal
+  └── Crunchbase → Market Pull
+        │
+        ▼
+Datenbank (PostgreSQL)
+  ├── fields (id, name, cluster, ...)
+  ├── scores (field_id, dimension, value, date)
+  ├── trends (field_id, score, timestamp)
+  └── sources (field_id, source, raw_value, date)
+```
+
+### Hosting (geplant)
+
+- Schweizer Hosting (Datenschutz)
+- Static Hosting für Frontend (z.B. Vercel, Netlify, oder CH-Provider)
+- Backend: containerisiert (Docker)
+- Datenbank: Managed PostgreSQL
+
+### Authentifizierung (Phase 3)
+
+- Für interne Nutzung: kein Login nötig
+- Für Kundenworkshops: einfacher Link-basierter Zugang
+- Für Mandanten-Portale: Auth0 oder ähnlich

@@ -1,51 +1,76 @@
-# Leadmaschine Liegenschaften
+# K AG Foresight Radar
 
-Liegenschafts-Lead Engine zur systematischen Identifikation von Grundstücken mit Entwicklungspotenzial im Kanton Zug. Fokus auf Objekte mit tiefer Ausnützungsziffer, hohem Alter oder Sanierungsbedarf.
+Strategische Analyse organisatorischer Handlungsfelder. 19 Felder, 5 Cluster, 5 Bewertungsdimensionen, 4 Handlungszonen.
 
-## Funktionen
+## Was ist das?
 
-- **Gebiet-Scan** — Systematische Suche über Gemeinden (Raster-basiert, konfigurierbar)
-- **AZ-Berechnung** — Ausnützungsziffer aus Zonenplan vs. aktuelle Nutzung
-- **Eigentümer-Analyse** — Zefix-Firmenabfrage + Heuristik
-- **Lead-Scoring** — Automatische Priorisierung (0-100 Punkte)
-- **Lead-Management** — Status, Notizen, Filter, Sortierung
-- **Renditekalkulator** — 3 Szenarien (Sanierung, Aufstockung, Neubau)
-- **Export** — CSV und PDF-Reports
-- **Karte** — Swisstopo mit Parzellengrenzen und Score-Markern
+Ein interaktives Analyse-Tool, das organisatorische Trends und Handlungsfelder auf einem Radar visualisiert. Jedes Feld wird anhand von 5 Dimensionen bewertet und einer Handlungszone zugeordnet (ACT / PREPARE / MONITOR / SCAN).
 
-## Tech-Stack
+Einsatz: Keynotes, Beratungseinstieg, Workshops, Thought Leadership.
 
-| Technologie | Zweck |
-|-------------|-------|
-| React + TypeScript | Frontend |
-| Vite | Build-Tool |
-| Tailwind CSS | Styling |
-| Zustand | State Management |
-| Leaflet | Karte (Swisstopo WMS) |
+## Methodik
 
-## Datenquellen
+Eigene K AG Methodik, inspiriert von Gartner Hype Cycle, McKinsey Technology Trends Outlook, IFTF Signals & Drivers, WEF Future of Jobs Report und Kairos Future TAIDA. Unterscheidungsmerkmale: Schweizer Perspektive, KMU-Fokus, explizite Messung der Readiness Gap.
 
-Alle Daten stammen aus öffentlichen Schweizer Quellen:
+**5 Bewertungsdimensionen:**
 
-- [geo.admin.ch](https://api3.geo.admin.ch) — Gebäuderegister (GWR), Parzellen
-- [geodienste.ch](https://geodienste.ch) — Zonenplan (Nutzungsplanung)
-- [Zefix](https://www.zefix.admin.ch) — Firmenregister (SPARQL)
-- [sonnendach.ch](https://www.sonnendach.ch) — Solarpotenzial
+| Dimension | Gewicht | Beschreibung |
+|-----------|---------|-------------|
+| Velocity | 20% | Veränderungsgeschwindigkeit (Suchvolumen, Paper-Frequenz) |
+| Impact Depth | 25% | Strukturelle Tiefe der Veränderung |
+| Market Pull | 20% | Nachfrage und Investitionen |
+| Talent Signal | 15% | Skill-Nachfrage auf dem Arbeitsmarkt |
+| Readiness Gap | 20% | Kluft zwischen Dringlichkeit und Umsetzung |
 
-## Setup
+**4 Handlungszonen:**
 
-```bash
-npm install
-npm run dev
+| Zone | Score | Bedeutung |
+|------|-------|-----------|
+| ACT | 75–100 | Sofort handeln |
+| PREPARE | 50–74 | Strategisch vorbereiten |
+| MONITOR | 25–49 | Aktiv beobachten |
+| SCAN | 0–24 | Auf dem Radar behalten |
+
+**5 Cluster:**
+
+- Intelligent Enterprise (AI Strategy, Data-Driven Decisions, Digital Transformation)
+- Workforce Evolution (Future of Work, Talent, Employee Experience, L&D)
+- Governance & Trust (Cybersecurity, Regulatory Compliance, Sustainability & ESG)
+- Organizational Agility (Change Management, Innovation, Operating Model, Agile Org)
+- Human Centricity (Leadership, Wellbeing, DEI, Ecosystem Management, Human-AI Collaboration)
+
+## Technologie
+
+- Vanilla HTML/CSS/JS (kein Build-Prozess)
+- D3.js v7 für Radar-Visualisierung
+- Chart.js v4 für Dashboard-Charts
+- Light + Dark Mode (CSS Custom Properties, `prefers-color-scheme`)
+
+## Struktur
+
+```
+index.html          — Hauptseite mit 5 Tabs
+css/style.css       — Styling, Farben, Responsive
+data/fields.js      — 19 Handlungsfelder, Cluster, Dimensionen, Zonen
+js/app.js           — Scoring-Engine, Navigation, Charts, Detail-Ansichten
+js/radar.js         — D3.js Radar-Visualisierung
+docs/               — Projektdokumentation
 ```
 
-## Projektdokumentation
+## Lokal starten
 
-- [Projekt-Steckbrief](docs/PROJECT.md)
-- [Architektur](docs/ARCHITECTURE.md)
-- [Roadmap](docs/ROADMAP.md)
-- [Logbuch](LOGBOOK.md)
+```bash
+# Beliebiger lokaler Server, z.B.:
+python3 -m http.server 8000
+# Dann http://localhost:8000 öffnen
+```
 
-## Eigentümer
+Oder einfach `index.html` direkt im Browser öffnen.
 
-K AG (Projektname)
+## Status
+
+Prototyp (Phase 1). Demo-Daten, kein Backend. Siehe `docs/ROADMAP.md` für geplante Phasen.
+
+## K AG
+
+Placeholder bis zur Firmengründung am 1.10.2026.

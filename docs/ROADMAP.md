@@ -1,93 +1,66 @@
-# Roadmap — Leadmaschine Liegenschaften
+# Roadmap: K AG Foresight Radar
 
-## Phase 1 — Prototyp (abgeschlossen)
+## Phase 1 — Prototyp (aktuell)
 
-**Zeitraum:** 14.04. — 08.05.2026
-**Kosten:** $9.38
-**Ergebnis:** Funktionierender Prototyp als Single-Page HTML-App
+**Status:** In Arbeit | **Aufwand:** ~3 Tage
 
-| Feature | Status |
-|---------|--------|
-| Swisstopo-Karte mit Parzellengrenzen | Erledigt |
-| Klick auf Karte → Gebäude-/Parzellendaten | Erledigt |
-| Adress-Suche (geo.admin.ch) | Erledigt |
-| Gebiet-Scan (Raster-basiert, Multi-Gemeinde) | Erledigt |
-| AZ-Berechnung (Bauordnung Zug §36) | Erledigt |
-| Eigentümer-Typ (Zefix + Heuristik) | Erledigt |
-| Lead-Status / Mini-CRM (6 Stufen) | Erledigt |
-| Notizen pro Objekt | Erledigt |
-| Score-System (0-100) | Erledigt |
-| Renditekalkulator (3 Szenarien) | Erledigt |
-| CSV-Export | Erledigt |
-| PDF-Report | Erledigt |
-| Sonnendach-Integration | Erledigt |
-| Klientenpitch (9 Slides) | Erledigt |
+| Schritt | Beschreibung | Status |
+|---------|-------------|--------|
+| 1.1 | D3.js Radar-Visualisierung (19 Felder, 4 Zonen, 5 Cluster) | Fertig |
+| 1.2 | Scoring-Engine (5 Dimensionen, gewichteter Durchschnitt) | Fertig |
+| 1.3 | Dashboard mit KPIs und Charts | Fertig |
+| 1.4 | Cluster-Ansicht | Fertig |
+| 1.5 | Handlungsfeld-Detailseiten | Fertig |
+| 1.6 | Methodik-Tab | Fertig |
+| 1.7 | Light + Dark Mode | Fertig |
+| 1.8 | Projektdokumentation (4 Docs) | Fertig |
+| 1.9 | PR und Review | In Arbeit |
 
----
+**Ergebnis:** Funktionsfähiger Prototyp mit Demo-Daten. Einsetzbar für Präsentationen und erste Kundengespräche.
 
-## Phase 2 — Professionalisierung (in Arbeit)
+## Phase 2 — Realtime-Daten (~8–12 Tage)
 
-**Zeitraum:** ab 25.05.2026
-**Ziel:** Vom Prototyp zum wartbaren, erweiterbaren Produkt
+| Schritt | Beschreibung | Aufwand |
+|---------|-------------|---------|
+| 2.1 | Backend-API (Node.js oder Python) | 2–3 Tage |
+| 2.2 | Google Trends Integration (Velocity) | 1–2 Tage |
+| 2.3 | arXiv API Integration (Velocity) | 1 Tag |
+| 2.4 | News/GDELT API Integration (Impact Depth) | 1–2 Tage |
+| 2.5 | LinkedIn/Indeed Scraping (Talent Signal) | 1–2 Tage |
+| 2.6 | Automatische Score-Berechnung | 1 Tag |
+| 2.7 | PostgreSQL für Zeitverlaufsdaten | 1 Tag |
 
-| Feature | Status |
-|---------|--------|
-| Vite + React + TypeScript Setup | In Arbeit |
-| Modulare Komponentenstruktur | In Arbeit |
-| Tailwind CSS Design-System | In Arbeit |
-| Zustand State Management | In Arbeit |
-| TypeScript-Typdefinitionen | In Arbeit |
-| API-Services modular (geo.admin, Zefix, etc.) | In Arbeit |
-| Projekt-Logbuch | Erledigt |
-| Projekt-Steckbrief | Erledigt |
-| Architektur-Dokumentation | Erledigt |
-| Roadmap | Erledigt |
-| Alle Features aus Phase 1 migrieren | In Arbeit |
+**Ergebnis:** Scores werden automatisch aus öffentlichen Datenquellen berechnet. Manuelle Bewertung bleibt als Fallback.
 
----
+## Phase 3 — Produktionsreife (~5–7 Tage)
 
-## Phase 3 — Kundenfähig machen (geplant)
+| Schritt | Beschreibung | Aufwand |
+|---------|-------------|---------|
+| 3.1 | Schweizer Hosting (Datenschutzkonform) | 1–2 Tage |
+| 3.2 | Crunchbase/PitchBook Integration (Market Pull) | 1–2 Tage |
+| 3.3 | Eigene Umfrage-Integration (Readiness Gap) | 1 Tag |
+| 3.4 | PDF-Export für Kunden-Reports | 1 Tag |
+| 3.5 | Branding und finale UI-Anpassungen | 1 Tag |
 
-**Zeitraum:** Q3 2026
-**Ziel:** Tool einer Immobilien AG zur Verfügung stellen
+**Ergebnis:** Produktionsreifes Tool mit vollem Daten-Pipeline. Einsetzbar für Mandanten.
 
-| Feature | Priorität |
-|---------|-----------|
-| Backend (Node.js/Express) | Hoch |
-| Datenbank (PostgreSQL) für Leads/Scans | Hoch |
-| Benutzer-Login (Authentifizierung) | Hoch |
-| CH-Hosting (Infomaniak, Swisscom o.ä.) | Hoch |
-| Test- vs. Produktionsumgebung | Hoch |
-| Geographische Erweiterung (Zentralschweiz) | Mittel |
-| Automatische Marktdaten-Aktualisierung | Mittel |
-| Echte Parzellenfläche (amtl. Vermessung) | Mittel |
-| Mandantenspezifische Konfiguration | Mittel |
+## Phase 4 — Mandanten-Portal (optional, ~10–15 Tage)
 
----
+| Schritt | Beschreibung | Aufwand |
+|---------|-------------|---------|
+| 4.1 | Mandanten-Login (Auth0) | 2–3 Tage |
+| 4.2 | Mandanten-spezifische Radar-Ansichten | 3–4 Tage |
+| 4.3 | Vergleichsfunktion (Branche vs. Mandant) | 2–3 Tage |
+| 4.4 | Workshop-Modus (interaktive Bewertung) | 3–4 Tage |
 
-## Phase 4 — Skalierung (Zukunft)
+**Ergebnis:** Kunden können ihr eigenes Radar sehen und sich mit der Branche vergleichen. Workshop-Modus für Beratungsmandate.
 
-**Zeitraum:** ab 2027
-**Ziel:** Multi-Mandant Plattform
+## Gesamtaufwand
 
-| Feature | Priorität |
-|---------|-----------|
-| Multi-Mandant (mehrere Kunden) | Hoch |
-| Kanton Zürich hinzufügen | Hoch |
-| Handänderungen-Daten (wo verfügbar) | Mittel |
-| PowerPoint-Export Klientenpitch | Mittel |
-| API für Drittsysteme | Niedrig |
-| Mobile App / PWA | Niedrig |
-| KI-basierte Lead-Priorisierung | Niedrig |
-
----
-
-## Entscheidungslog
-
-| Datum | Entscheidung | Begründung |
-|-------|-------------|------------|
-| 14.04.2026 | Kanton Zug als Pilotregion | Zielkunde sitzt in Zug, überschaubare Grösse |
-| 14.04.2026 | Statische HTML-App (Prototyp) | Schnellster Weg zum funktionierenden MVP |
-| 25.05.2026 | React + TypeScript + Tailwind | Professioneller Stack, wartbar, erweiterbar |
-| 25.05.2026 | Projektname "K AG" | Platzhalter bis Firmengründung 1.10.2026 |
-| 25.05.2026 | Kein Backend in Phase 2 | Frontend-Professionalisierung zuerst |
+| Phase | Aufwand | Abhängigkeit |
+|-------|---------|-------------|
+| Phase 1 | ~3 Tage | Keine |
+| Phase 2 | ~8–12 Tage | API-Keys für Datenquellen |
+| Phase 3 | ~5–7 Tage | Hosting-Entscheid, Phase 2 |
+| Phase 4 | ~10–15 Tage | Phase 3, Mandanten-Anforderungen |
+| **Total** | **~26–37 Tage** | |

@@ -1,78 +1,70 @@
-# Projekt-Steckbrief — Leadmaschine Liegenschaften
+# Projektsteckbrief: K AG Foresight Radar
 
-## Übersicht
+## Überblick
 
 | Feld | Wert |
 |------|------|
-| Projektname | Leadmaschine Liegenschaften |
-| Arbeitstitel Firma | K AG (wird vor 1.10.2026 finalisiert) |
-| Eigentümer | Michael Katzlberger |
-| Zielkunde | Immobilien AG (Entwicklung, Ausführung, Bewirtschaftung) |
-| Projektstart | 14.04.2026 |
-| Repository | https://github.com/Katz61/Immobilien-Radar-Aula |
-| Aktueller Status | Phase 2 — Professionalisierung |
+| Projektname | K AG Foresight Radar |
+| Projektleiter | Michael Katzlberger |
+| Firma | K AG (Gründung 1.10.2026) |
+| Status | Prototyp (Phase 1) |
+| Start | 25. Mai 2026 |
+| Repository | Immobilien-Radar-Aula |
 
-## Zweck
+## Projektziel
 
-Die Leadmaschine identifiziert Liegenschaften mit Entwicklungspotenzial im Kanton Zug. Das Tool generiert eine priorisierte Lead-Liste für Immobilienentwickler, basierend auf öffentlich verfügbaren Daten.
+Ein interaktives Foresight-Tool, das 19 organisatorische Handlungsfelder analysiert und auf einem Radar visualisiert. Das Tool dient als:
 
-## Kernfunktionen
+1. Einstieg in Beratungsmandate (Conversation Opener)
+2. Keynote-Visualisierung
+3. Workshop-Instrument für Kunden
+4. Thought-Leadership-Plattform (LinkedIn, Vorträge)
 
-1. **Gebiet-Scan** — Systematische Suche über ganze Gemeinden (Raster-basiert)
-2. **Ausnützungsziffer (AZ)** — Berechnung der genutzten vs. erlaubten Geschossfläche
-3. **Eigentümer-Analyse** — Zefix-Firmenabfrage + Heuristik (Erbengemeinschaft, Privatperson)
-4. **Scoring** — Automatische Priorisierung (0-100 Punkte)
-5. **Lead-Management** — Status-Tracking (Neu bis Erledigt), Notizen, Filterfunktionen
-6. **Renditekalkulator** — 3 Szenarien (Sanierung, Aufstockung, Neubau)
-7. **Export** — CSV mit allen Feldern, PDF-Report pro Objekt
+## Abgrenzung
 
-## Zielgruppe
+- Kein ERP, kein CRM, kein Projektmanagement-Tool
+- Kein Konkurrenzprodukt zu Gartner oder McKinsey (anderer Scope: Organisationen, nicht Technologie)
+- Unabhängig vom Risikomanagement-Tool (separate Anwendung)
+- Phase 1 = Prototyp mit Demo-Daten (kein Live-Backend)
 
-| Rolle | Nutzen |
-|-------|--------|
-| Immobilienentwickler | Grundstücke mit ungenutzter Ausnützung finden |
-| Akquisiteur | Lead-Liste mit Eigentümer-Hinweisen bearbeiten |
-| Geschäftsleitung | Marktanalysen und Renditeberechnungen für Investitionsentscheide |
+## Rollen
 
-## Datenquellen
+| Rolle | Person | Verantwortung |
+|-------|--------|---------------|
+| Projektleiter | Michael Katzlberger | Inhaltliche Steuerung, Abnahme |
+| Entwicklung | Devin (AI) | Implementation, Dokumentation |
 
-| Quelle | Daten | Zugang |
-|--------|-------|--------|
-| geo.admin.ch | Gebäuderegister (GWR), Parzellen, amtliche Vermessung | Öffentlich, API |
-| Zefix (ld.admin.ch) | Firmensuche (CHE-UID, Rechtsform) | Öffentlich, SPARQL |
-| geodienste.ch | Zonenplan-Daten (Nutzungsplanung) | Öffentlich, OGC API |
-| sonnendach.ch | Solarpotenzial Dachflächen | Öffentlich, API |
-| RealAdvisor | Immobilienpreise pro Gemeinde | Manuell erfasst |
-| Comparis | Verkaufspreise pro Gemeinde | Manuell erfasst |
-| immobilienindex.ch | Bauland-/Bodenpreise | Manuell erfasst |
+## Methodik
 
-## Geographischer Scope
+Eigene K AG Methodik mit 5 Bewertungsdimensionen:
+- Velocity (20%) — Veränderungsgeschwindigkeit
+- Impact Depth (25%) — Strukturelle Tiefe
+- Market Pull (20%) — Nachfrage und Investitionen
+- Talent Signal (15%) — Arbeitsmarkt-Dynamik
+- Readiness Gap (20%) — Umsetzungslücke
 
-- **Aktuell:** Kanton Zug (11 Gemeinden)
-- **Geplant:** Zentralschweiz + Kanton Zürich (nach Kundenfeedback)
-- Kernquellen (geo.admin.ch, Zefix, sonnendach.ch) funktionieren schweizweit
+4 Handlungszonen: ACT / PREPARE / MONITOR / SCAN
 
-## Bekannte Einschränkungen
+5 Cluster: Intelligent Enterprise, Workforce Evolution, Governance & Trust, Organizational Agility, Human Centricity
 
-- Eigentümerdaten nicht bulk-abrufbar (Schweizer Grundbuch: pro Objekt, gegen Gebühr)
-- Zefix identifiziert nur juristische Personen, nicht Privatpersonen
-- AZ-Berechnung basiert auf Gebäudegrundfläche (echte Parzellenfläche wäre präziser)
-- Marktdaten manuell gepflegt (kein automatischer Datenabzug)
+Inspirationsquellen: Gartner Hype Cycle, McKinsey Technology Trends Outlook, IFTF Signals & Drivers, WEF Future of Jobs, Kairos Future TAIDA.
 
-## Wettbewerb
+Alleinstellungsmerkmal: Schweizer Perspektive, KMU-Fokus, Readiness Gap als 5. Dimension.
 
-| Anbieter | Positionierung | Abgrenzung |
-|----------|---------------|------------|
-| Popety.io | Schweizer Startup, Fokus Romandie | Kein Fokus Zentralschweiz |
-| Wüest Partner / IAZI | Bewertungstools, 5-stellige Lizenzen | Kein Lead-Fokus |
-| Fahrländer Partner | Marktanalysen | Kein operatives Lead-Tool |
-| ReMatch360 | Marktanalysen | Kein Fokus auf ungenutzte Ausnützung |
+## Technische Rahmenbedingungen
 
-Die Leadmaschine ist in der Nische "Kanton Zug + AZ-basierte Lead-Generierung" einzigartig positioniert.
+- Frontend-only (Vanilla HTML/CSS/JS)
+- D3.js für Radar, Chart.js für Dashboards
+- Kein Build-Prozess, kein Framework
+- Light + Dark Mode
+- Responsive Design
+- CDN für Libraries (D3, Chart.js)
 
-## Betriebsmodell
+## Qualitätskriterien
 
-- **Entwicklung:** Devin (Test-Umgebung, ohne Kundendaten)
-- **Hosting:** Schweizer Hosting (geplant)
-- **Bereitstellung:** Tool wird dem Zielkunden (Immobilien AG) zur Verfügung gestellt
-- **Datenhaltung:** Aktuell localStorage (Browser), geplant: Server-seitige Datenbank
+- Alle 19 Felder korrekt bewertet und visualisiert
+- Scoring-Engine rechnet korrekt (gewichteter Durchschnitt)
+- Radar-Visualisierung interaktiv (Hover, Click)
+- 5 Tabs funktional (Dashboard, Radar, Cluster, Alle Felder, Methodik)
+- Dark Mode funktioniert
+- Mobile-tauglich (Responsive)
