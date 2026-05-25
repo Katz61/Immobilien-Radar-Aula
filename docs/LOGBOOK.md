@@ -80,4 +80,34 @@ Alle 5 Tabs getestet:
 ### Commits und PR
 
 - Branch: `devin/1779704487-k-ag-trendradar`
-- PR erstellt mit vollständiger Beschreibung
+- PR #5 erstellt, End-to-End getestet (7/7 Tests bestanden), gemerged
+
+---
+
+## 25. Mai 2026 (Nachmittag)
+
+### Smart Language Mode
+
+Feature-Anforderung: Natürlichsprachige Interaktion mit dem Foresight Radar.
+
+Anforderungen:
+- Muss lokal laufen, keine Daten an US-Server
+- Schweizer Open-Source-Modell bevorzugt
+
+Recherche: **Apertus** identifiziert als Schweizer Open-Source-LLM.
+- Entwickelt von EPFL, ETH Zürich, CSCS (Swiss AI Initiative)
+- Trainiert auf Alps Supercomputer in Lugano
+- 8B und 70B Parameter, Apache 2.0 Lizenz
+- Mehrsprachig (DE, FR, IT, EN), DSGVO-konform
+- Verfügbar auf Ollama: `MichelRosselli/apertus:8b-instruct-2509-q4_k_m`
+
+Implementierung:
+- `js/chat.js` — Chat-Engine mit Ollama-API-Integration (localhost:11434)
+- Floating Chat-Button (unten rechts), aufklappbares Panel
+- System-Prompt enthält alle 19 Felder, Scores, Cluster, Methodik als Kontext
+- Streaming-Antworten für flüssige UX
+- Fallback mit Setup-Anleitung wenn Ollama nicht läuft
+- `css/style.css` — Chat-Panel-Styles (light/dark mode)
+- `index.html` — Chat-HTML-Struktur
+
+Branch: `devin/1779731632-smart-language-mode`
