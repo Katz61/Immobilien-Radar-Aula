@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K AG Foresight Radar</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <div>
+      <div class="header-title">K AG Foresight Radar</div>
+      <div class="header-sub">Strategische Analyse organisatorischer Handlungsfelder — 19 Felder, 5 Cluster, 5 Dimensionen</div>
+    </div>
+    <div class="header-meta">
+      <span class="badge-live">PROTOTYP</span>
+      <span class="header-date" id="current-date"></span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- NAVIGATION -->
+  <nav class="nav">
+    <button class="nb active" data-tab="dash">Dashboard</button>
+    <button class="nb" data-tab="radar">Radar</button>
+    <button class="nb" data-tab="clusters">Cluster</button>
+    <button class="nb" data-tab="fields">Alle Felder</button>
+    <button class="nb" data-tab="methodik">Methodik</button>
+  </nav>
+
+  <!-- DASHBOARD -->
+  <div id="tab-dash" class="tab active">
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Felder</div>
+        <div class="kpi-value" id="k-total">—</div>
+        <div class="kpi-sub">analysiert</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">ACT</div>
+        <div class="kpi-value" id="k-act" style="color:var(--act)">—</div>
+        <div class="kpi-sub">Sofort handeln</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">PREPARE</div>
+        <div class="kpi-value" id="k-prepare" style="color:var(--prepare)">—</div>
+        <div class="kpi-sub">Vorbereiten</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">MONITOR</div>
+        <div class="kpi-value" id="k-monitor" style="color:var(--monitor)">—</div>
+        <div class="kpi-sub">Beobachten</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">SCAN</div>
+        <div class="kpi-value" id="k-scan" style="color:var(--scan)">—</div>
+        <div class="kpi-sub">Auf dem Radar</div>
+      </div>
+    </div>
+
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi-card">
+        <div class="kpi-label">Durchschnitt</div>
+        <div class="kpi-value" id="k-avg" style="color:var(--blue)">—</div>
+        <div class="kpi-sub">Gesamt-Score</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Cluster</div>
+        <div class="kpi-value" id="k-clusters" style="color:var(--blue)">—</div>
+        <div class="kpi-sub">Themengruppen</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Dimensionen</div>
+        <div class="kpi-value" style="color:var(--blue)">5</div>
+        <div class="kpi-sub">Bewertungskriterien</div>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="card">
+        <div class="card-title">Verteilung nach Zone</div>
+        <div style="height:200px"><canvas id="c-zones"></canvas></div>
+        <div class="zone-legend">
+          <div class="zone-legend-item"><div class="zone-legend-dot" style="background:#C62828"></div> ACT</div>
+          <div class="zone-legend-item"><div class="zone-legend-dot" style="background:#E65100"></div> PREPARE</div>
+          <div class="zone-legend-item"><div class="zone-legend-dot" style="background:#1565C0"></div> MONITOR</div>
+          <div class="zone-legend-item"><div class="zone-legend-dot" style="background:#546E7A"></div> SCAN</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Score-Ranking</div>
+        <div style="height:480px"><canvas id="c-dist"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Top-Handlungsfelder</div>
+      <div id="top-fields"></div>
+    </div>
+  </div>
+
+  <!-- RADAR -->
+  <div id="tab-radar" class="tab">
+    <div class="card">
+      <div class="card-title">Foresight Radar</div>
+      <p style="font-size:11px;color:var(--text2);margin-bottom:12px">
+        Hover für Details, Klick für Tiefenanalyse. Innere Zone = höchster Handlungsbedarf.
+        Farbiger Rand = Cluster-Zugehörigkeit.
+      </p>
+      <div class="radar-wrap">
+        <div id="radar-container"></div>
+        <div class="radar-tooltip" id="radar-tooltip">
+          <div class="tt-name"></div>
+          <div class="tt-zone" style="margin-bottom:6px"></div>
+          <div class="tt-score"></div>
+          <div class="tt-bars"></div>
+        </div>
+      </div>
+      <div class="zone-legend">
+        <div class="zone-legend-item"><div class="zone-legend-dot" style="background:#C62828"></div> ACT</div>
+        <div class="zone-legend-item"><div class="zone-legend-dot" style="background:#E65100"></div> PREPARE</div>
+        <div class="zone-legend-item"><div class="zone-legend-dot" style="background:#1565C0"></div> MONITOR</div>
+        <div class="zone-legend-item"><div class="zone-legend-dot" style="background:#546E7A"></div> SCAN</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLUSTER VIEW -->
+  <div id="tab-clusters" class="tab">
+    <div id="cluster-list"></div>
+  </div>
+
+  <!-- FIELDS TABLE -->
+  <div id="tab-fields" class="tab">
+    <div class="card">
+      <div class="card-title">Alle Handlungsfelder</div>
+      <div style="overflow-x:auto">
+        <table class="fields-table">
+          <thead>
+            <tr>
+              <th>Handlungsfeld</th>
+              <th>Cluster</th>
+              <th>Score</th>
+              <th>Zone</th>
+              <th>Trend</th>
+              <th>Velocity</th>
+              <th>Impact</th>
+              <th>Market</th>
+              <th>Talent</th>
+              <th>Readiness</th>
+            </tr>
+          </thead>
+          <tbody id="fields-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- DETAIL VIEW -->
+  <div id="tab-detail" class="tab">
+    <button class="detail-back" onclick="backToList()">&#8592; Zurück</button>
+    <div class="card">
+      <div class="detail-header">
+        <div id="detail-ring"></div>
+        <div class="detail-meta">
+          <h2 id="detail-name"></h2>
+          <p id="detail-desc"></p>
+          <div id="detail-badges"></div>
+        </div>
+      </div>
+      <div class="detail-dimensions" id="detail-dimensions"></div>
+      <div class="detail-insight" id="detail-insight">
+        <strong>Einschätzung:</strong> <span id="detail-insight-text"></span>
+      </div>
+      <div class="card-title">Score-Verlauf (18 Monate)</div>
+      <div style="height:200px"><canvas id="c-trend"></canvas></div>
+    </div>
+  </div>
+
+  <!-- METHODIK -->
+  <div id="tab-methodik" class="tab">
+    <div class="card">
+      <div class="card-title">K AG Methodik</div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6">
+        Das K AG Foresight Radar analysiert 19 Handlungsfelder in 5 Clustern anhand von 5 Bewertungsdimensionen.
+        Jede Dimension wird auf einer Skala von 0 bis 100 bewertet. Der gewichtete Durchschnitt
+        ergibt den Gesamtscore, der die Zuordnung zu einer der 4 Handlungszonen bestimmt.
+      </p>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6">
+        Die Methodik kombiniert quantitative Signalanalyse (Suchvolumen, Publikationsfrequenz,
+        Investitionsdaten) mit qualitativer Experteneinschätzung. Die 5. Dimension «Readiness Gap»
+        ist das Alleinstellungsmerkmal: Sie misst nicht nur, wie wichtig ein Thema ist, sondern
+        wie schlecht die meisten Organisationen darauf vorbereitet sind.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">5 Bewertungsdimensionen</div>
+      <div class="methodik-grid" id="methodik-dimensions"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">4 Handlungszonen</div>
+      <div class="methodik-grid" id="methodik-zones"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Datenquellen (geplant)</div>
+      <div style="overflow-x:auto">
+        <table class="fields-table">
+          <thead>
+            <tr><th>Dimension</th><th>Quelle</th><th>Methode</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Velocity</td><td>Google Trends</td><td>Suchvolumen-Wachstum pro Keyword</td><td><span class="zone-badge zone-monitor">Phase 2</span></td></tr>
+            <tr><td>Velocity</td><td>arXiv</td><td>Paper-Frequenz pro Thema</td><td><span class="zone-badge zone-monitor">Phase 2</span></td></tr>
+            <tr><td>Impact Depth</td><td>News-APIs (GDELT)</td><td>Medienpräsenz und Framing-Analyse</td><td><span class="zone-badge zone-monitor">Phase 2</span></td></tr>
+            <tr><td>Impact Depth</td><td>EU/CH Regulierung</td><td>Gesetzgebungsaktivität</td><td><span class="zone-badge zone-monitor">Phase 2</span></td></tr>
+            <tr><td>Market Pull</td><td>Crunchbase / PitchBook</td><td>VC-Investitionen pro Feld</td><td><span class="zone-badge zone-scan">Phase 3</span></td></tr>
+            <tr><td>Market Pull</td><td>Konferenz-Agendas</td><td>Themenfrequenz bei Top-Events</td><td><span class="zone-badge zone-scan">Phase 3</span></td></tr>
+            <tr><td>Talent Signal</td><td>LinkedIn / Indeed</td><td>Stelleninserate pro Skill-Cluster</td><td><span class="zone-badge zone-monitor">Phase 2</span></td></tr>
+            <tr><td>Readiness Gap</td><td>Eigene Umfragen</td><td>Reifegraderhebung bei Mandaten</td><td><span class="zone-badge zone-scan">Phase 3</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Inspirationsquellen</div>
+      <p style="font-size:12px;color:var(--text2);line-height:1.6">
+        Die K AG Methodik ist eine eigenständige Entwicklung, inspiriert von etablierten Frameworks
+        der strategischen Vorausschau: Gartner Hype Cycle (Technologie-Reifegradmodell),
+        McKinsey Technology Trends Outlook (quantitative Multi-Indikator-Analyse),
+        IFTF Signals & Drivers (qualitative Signalanalyse), WEF Future of Jobs Report (Arbeitsmarkt-Perspektive)
+        und Kairos Future TAIDA (europäischer Foresight-Ansatz). Die K AG Methodik unterscheidet
+        sich durch die Schweizer Perspektive, den KMU-Fokus und die explizite Messung der Readiness Gap.
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<footer class="footer">
+  K AG Foresight Radar — Prototyp &middot; 19 Handlungsfelder, 5 Cluster, 5 Dimensionen
+</footer>
+
+<script src="data/fields.js"></script>
+<script src="js/app.js"></script>
+<script src="js/radar.js"></script>
+</body>
+</html>
