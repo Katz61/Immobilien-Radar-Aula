@@ -246,6 +246,37 @@
 
 </div>
 
+<!-- CHAT PANEL -->
+<button class="chat-toggle" id="chat-toggle" title="Foresight Assistent">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+  </svg>
+</button>
+
+<div class="chat-panel" id="chat-panel">
+  <div class="chat-header">
+    <div class="chat-header-info">
+      <div class="chat-header-title">Foresight Assistent</div>
+      <div class="chat-header-sub" id="chat-status">Apertus 8B (lokal via Ollama)</div>
+    </div>
+    <button class="chat-close" id="chat-close" title="Schliessen">&times;</button>
+  </div>
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-msg chat-msg-assistant">
+      <div class="chat-msg-content">Ich bin der Foresight Assistent, betrieben mit <strong>Apertus 8B</strong> (Schweizer Open-Source-Modell, lokal via Ollama). Frag mich zu den 19 Handlungsfeldern, Scores, Clustern oder der Methodik.<br><br>
+      <em style="font-size:10px;color:var(--text3)">Voraussetzung: Ollama muss lokal laufen mit dem Apertus-Modell.</em></div>
+    </div>
+  </div>
+  <div class="chat-input-row">
+    <textarea class="chat-input" id="chat-input" placeholder="Frage stellen..." rows="1"></textarea>
+    <button class="chat-send" id="chat-send" title="Senden">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
 <footer class="footer">
   K AG Foresight Radar — Prototyp &middot; 19 Handlungsfelder, 5 Cluster, 5 Dimensionen
 </footer>
@@ -253,5 +284,6 @@
 <script src="data/fields.js"></script>
 <script src="js/app.js"></script>
 <script src="js/radar.js"></script>
+<script src="js/chat.js"></script>
 </body>
 </html>
